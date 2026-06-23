@@ -1,15 +1,35 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { Button } from '@/shared/components/Button';
+import { Card } from '@/shared/components/Card';
 import { TransactionForm } from '@/features/transactions/TransactionForm';
 import { monthLabel, prevMonth, nextMonth, currentMonth } from '@/shared/utils/dates';
 import { useT } from '@/shared/i18n';
 import { SummaryCards } from './widgets/SummaryCards';
-import { ExpensePieChart } from './widgets/ExpensePieChart';
-import { MonthlyBarChart } from './widgets/MonthlyBarChart';
 import { RecentTransactions } from './widgets/RecentTransactions';
 import { BudgetProgress } from './widgets/BudgetProgress';
 import type { TxType } from '@/types';
+
+// recharts (+ its dependency tree: d3-*, lodash, decimal.js-light) is ~600KB
+// unminified — lazy-load the two chart widgets so it isn't part of the initial
+// bundle needed to paint the dashboard's non-chart content.
+const ExpensePieChart = lazy(() =>
+  import('./widgets/ExpensePieChart').then((m) => ({ default: m.ExpensePieChart }))
+);
+const MonthlyBarChart = lazy(() =>
+  import('./widgets/MonthlyBarChart').then((m) => ({ default: m.MonthlyBarChart }))
+);
+
+function ChartFallback() {
+  const { t } = useT();
+  return (
+    <Card>
+      <div className="h-48 flex items-center justify-center text-sm text-[var(--text-2)]">
+        {t('loading')}
+      </div>
+    </Card>
+  );
+}
 
 export function Dashboard() {
   const { t, locale } = useT();
@@ -60,8 +80,12 @@ export function Dashboard() {
       <SummaryCards month={month} />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <ExpensePieChart month={month} />
-        <MonthlyBarChart month={month} />
+        <Suspense fallback={<ChartFallback />}>
+          <ExpensePieChart month={month} />
+        </Suspense>
+        <Suspense fallback={<ChartFallback />}>
+          <MonthlyBarChart month={month} />
+        </Suspense>
         <RecentTransactions />
         <BudgetProgress month={month} />
       </div>
