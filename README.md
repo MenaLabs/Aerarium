@@ -1,10 +1,12 @@
 # Aerarium
 
-A free, open-source desktop finance tracker. No ads, no required account, no server — your data stays in a local JSON file on your own machine.
+### English
 
-Built with Electron, React, TypeScript, Tailwind CSS, and Zustand.
+A free, open-source desktop finance tracker. No ads, no required account, no server — your data stays in a local JSON file on your own machine. Built with Electron, React, TypeScript, Tailwind CSS, and Zustand.
 
-> Безкоштовний відкритий десктопний фінансовий трекер. Без реклами, без обов'язкового акаунту, без сервера — дані зберігаються локально у файлі на вашому комп'ютері.
+### Українська
+
+Безкоштовний відкритий десктопний фінансовий трекер. Без реклами, без обов'язкового акаунту, без сервера — дані зберігаються локально у файлі на вашому комп'ютері. Зроблено на Electron, React, TypeScript, Tailwind CSS та Zustand.
 
 ## Features
 
@@ -14,8 +16,32 @@ Built with Electron, React, TypeScript, Tailwind CSS, and Zustand.
 - Custom analytics charts (line, bar, pie, table)
 - Multi-currency support (~30 fiat currencies + top crypto), live exchange rates via [Frankfurter](https://frankfurter.dev) and [CoinGecko](https://www.coingecko.com)
 - CSV and PDF export
-- Local encrypted-free backup/restore, automatic weekly local backups
+- Local backup/restore, automatic weekly local backups
 - English and Ukrainian UI
+
+## Roadmap
+
+### English
+
+This is an early beta (0.1.0) — desktop/PC only for now. Near-term plans:
+
+- Bug fixes and UI polish based on tester feedback
+- More currencies, locales, and chart types
+- Continued performance/bundle-size work
+- A mobile companion app and an optional paid Pro tier are being explored separately, to keep this core build free, open, and ad-free long-term
+
+No fixed dates yet — this list will evolve as the beta gets real-world testing.
+
+### Українська
+
+Це рання бета-версія (0.1.0) — поки лише для ПК. Найближчі плани:
+
+- Виправлення багів і доопрацювання інтерфейсу за відгуками тестувальників
+- Більше валют, локалізацій і типів графіків
+- Подальша робота над продуктивністю та розміром застосунку
+- Мобільний застосунок і опційна платна Pro-версія розглядаються окремо — щоб ця базова збірка лишалася безкоштовною, відкритою і без реклами надовго
+
+Конкретних дат поки немає — список оновлюватиметься за результатами тестування.
 
 ## Development
 
