@@ -46,12 +46,23 @@ export interface Transaction {
   recurringId?: string;
 }
 
+export type BudgetPeriod = 'day' | 'week' | 'month' | 'year';
+
+// A recurring category limit. The amount/percent is per `period`; it is
+// normalized to a daily rate and prorated to whatever date range is viewed.
 export interface Budget {
   id: string;
-  month: string; // YYYY-MM
   categoryId: string;
+  period: BudgetPeriod;
   amountUAH?: number;
-  percent?: number; // % of the expected monthly budget for that month, alternative to amountUAH
+  percent?: number; // % of the expected budget for the viewed range, alternative to amountUAH
+}
+
+// The single recurring "expected budget" rate. `amount` (UAH) is per `period`;
+// internally normalized to a daily rate so any range can be derived from it.
+export interface ExpectedBudget {
+  amount: number;
+  period: BudgetPeriod;
 }
 
 export interface Transfer {
@@ -135,7 +146,8 @@ export interface AppData {
   transactions: Transaction[];
   categories: Category[];
   budgets: Budget[];
-  monthlyBudgets?: Record<string, number>; // month "YYYY-MM" -> expected total spend (UAH)
+  expectedBudget?: ExpectedBudget; // recurring expected-spend rate
+  monthlyBudgets?: Record<string, number>; // month "YYYY-MM" -> expected total spend override (UAH)
   transfers: Transfer[];
   recurringRules: RecurringRule[];
   chartWidgets: ChartWidget[];

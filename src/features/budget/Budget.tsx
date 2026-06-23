@@ -4,7 +4,7 @@ import { Plus, Check, Trash2, Pencil, Pause, Play } from 'lucide-react';
 import { Card } from '@/shared/components/Card';
 import { Input } from '@/shared/components/Input';
 import { Select } from '@/shared/components/Select';
-import { MonthPicker } from '@/shared/components/MonthPicker';
+import { DateRangeFilter } from '@/shared/components/DateRangeFilter';
 import { Button } from '@/shared/components/Button';
 import { Modal } from '@/shared/components/Modal';
 import { ProgressBar } from '@/shared/components/ProgressBar';
@@ -12,15 +12,37 @@ import { useStore } from '@/store';
 import { useToastStore } from '@/store/toastStore';
 import { useCurrency } from '@/shared/hooks/useCurrency';
 import { formatAmount } from '@/shared/utils/currency';
-import { resolveBudgetLimit } from '@/shared/utils/budget';
-import { currentMonth, monthLabel } from '@/shared/utils/dates';
+import {
+  convertPeriod,
+  daysInRange,
+  expectedBudgetForRange,
+  resolveBudgetLimit,
+} from '@/shared/utils/budget';
+import { currentMonth, monthBounds, monthLabel } from '@/shared/utils/dates';
 import { useT, type TranslationKey } from '@/shared/i18n';
 import { CurrencyPicker } from '@/shared/components/CurrencyPicker';
 import { TransactionForm } from '@/features/transactions/TransactionForm';
 import { categoryDisplayName } from '@/shared/utils/categoryName';
-import type { Currency, RecurFrequency, RecurringRule, Transaction, TxType } from '@/types';
+import type {
+  BudgetPeriod,
+  Currency,
+  RecurFrequency,
+  RecurringRule,
+  Transaction,
+  TxType,
+} from '@/types';
 
 type LimitMode = 'amount' | 'percent';
+type EntryPeriod = BudgetPeriod | 'custom';
+
+const PERIODS: BudgetPeriod[] = ['day', 'week', 'month', 'year'];
+
+const PERIOD_KEYS: Record<BudgetPeriod, TranslationKey> = {
+  day: 'budget_period_day',
+  week: 'budget_period_week',
+  month: 'budget_period_month',
+  year: 'budget_period_year',
+};
 
 const WEEKDAY_KEYS: TranslationKey[] = [
   'weekday_sun',
@@ -44,20 +66,35 @@ function weekdayOptions(t: (key: TranslationKey) => string) {
   ];
 }
 
-function frequencyLabel(rule: RecurringRule, t: (key: TranslationKey, params?: Record<string, string | number>) => string): string {
+function frequencyLabel(
+  rule: RecurringRule,
+  t: (key: TranslationKey, params?: Record<string, string | number>) => string
+): string {
   if (rule.frequency === 'monthly') {
     return t('budget_monthlyOn', { day: rule.dayOfMonth ?? 1 });
   }
   return t('budget_weeklyOn', { day: t(WEEKDAY_KEYS[rule.weekday ?? 0]) });
 }
 
+// If [from,to] is exactly one whole calendar month, return its "YYYY-MM".
+function singleMonthOf(from: string, to: string): string | null {
+  const ym = from.slice(0, 7);
+  const b = monthBounds(ym);
+  return from === b.from && to === b.to ? ym : null;
+}
+
+function periodPill(active: boolean): string {
+  return `rounded-lg px-2.5 py-1.5 text-xs font-medium transition ${
+    active ? 'bg-[var(--blue)] text-white' : 'bg-[var(--bg-hover)] text-[var(--text-2)]'
+  }`;
+}
+
 interface BudgetLimitModalProps {
   open: boolean;
   onClose: () => void;
-  month: string;
 }
 
-function BudgetLimitModal({ open, onClose, month }: BudgetLimitModalProps) {
+function BudgetLimitModal({ open, onClose }: BudgetLimitModalProps) {
   const categories = useStore((s) => s.categories);
   const setBudget = useStore((s) => s.setBudget);
   const setBudgetPercent = useStore((s) => s.setBudgetPercent);
@@ -67,12 +104,14 @@ function BudgetLimitModal({ open, onClose, month }: BudgetLimitModalProps) {
 
   const [categoryId, setCategoryId] = useState(expenseCategories[0]?.id ?? '');
   const [mode, setMode] = useState<LimitMode>('amount');
+  const [period, setPeriod] = useState<BudgetPeriod>('month');
   const [amount, setAmount] = useState('');
   const [percent, setPercent] = useState('');
 
   useEffect(() => {
     if (!open) return;
     setMode('amount');
+    setPeriod('month');
     setAmount('');
     setPercent('');
     setCategoryId(expenseCategories[0]?.id ?? '');
@@ -84,11 +123,11 @@ function BudgetLimitModal({ open, onClose, month }: BudgetLimitModalProps) {
     if (mode === 'amount') {
       const parsed = parseFloat(amount.replace(',', '.'));
       if (isNaN(parsed) || parsed <= 0) return;
-      setBudget(month, categoryId, parsed);
+      setBudget(categoryId, parsed, period);
     } else {
       const parsed = parseFloat(percent.replace(',', '.'));
       if (isNaN(parsed) || parsed <= 0 || parsed > 100) return;
-      setBudgetPercent(month, categoryId, parsed);
+      setBudgetPercent(categoryId, parsed, period);
     }
     onClose();
   }
@@ -108,9 +147,7 @@ function BudgetLimitModal({ open, onClose, month }: BudgetLimitModalProps) {
             type="button"
             onClick={() => setMode('amount')}
             className={`rounded-lg py-2 text-sm font-medium transition ${
-              mode === 'amount'
-                ? 'bg-[var(--blue)] text-white'
-                : 'bg-[var(--bg-hover)] text-[var(--text-2)]'
+              mode === 'amount' ? 'bg-[var(--blue)] text-white' : 'bg-[var(--bg-hover)] text-[var(--text-2)]'
             }`}
           >
             {t('budget_amountUah', { currency: defaultCurrency })}
@@ -119,9 +156,7 @@ function BudgetLimitModal({ open, onClose, month }: BudgetLimitModalProps) {
             type="button"
             onClick={() => setMode('percent')}
             className={`rounded-lg py-2 text-sm font-medium transition ${
-              mode === 'percent'
-                ? 'bg-[var(--blue)] text-white'
-                : 'bg-[var(--bg-hover)] text-[var(--text-2)]'
+              mode === 'percent' ? 'bg-[var(--blue)] text-white' : 'bg-[var(--bg-hover)] text-[var(--text-2)]'
             }`}
           >
             {t('budget_percentOfExpenses')}
@@ -148,6 +183,17 @@ function BudgetLimitModal({ open, onClose, month }: BudgetLimitModalProps) {
           />
         )}
 
+        <div className="flex flex-col gap-1">
+          <span className="text-xs text-[var(--text-2)]">{t('budget_period')}</span>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {PERIODS.map((p) => (
+              <button key={p} type="button" onClick={() => setPeriod(p)} className={periodPill(period === p)}>
+                {t(PERIOD_KEYS[p])}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div className="flex justify-end gap-2 mt-2">
           <Button type="button" variant="ghost" onClick={onClose}>
             {t('common_cancel')}
@@ -159,49 +205,144 @@ function BudgetLimitModal({ open, onClose, month }: BudgetLimitModalProps) {
   );
 }
 
-interface MonthlyBudgetModalProps {
+interface ExpectedBudgetModalProps {
   open: boolean;
   onClose: () => void;
-  month: string;
-  currentValueUAH: number;
+  overrideMonth: string | null; // when the current view is a single calendar month
 }
 
-function MonthlyBudgetModal({ open, onClose, month, currentValueUAH }: MonthlyBudgetModalProps) {
+function ExpectedBudgetModal({ open, onClose, overrideMonth }: ExpectedBudgetModalProps) {
+  const expectedBudget = useStore((s) => s.expectedBudget);
+  const setExpectedBudget = useStore((s) => s.setExpectedBudget);
+  const monthlyBudgets = useStore((s) => s.monthlyBudgets);
   const setMonthlyBudget = useStore((s) => s.setMonthlyBudget);
   const deleteMonthlyBudget = useStore((s) => s.deleteMonthlyBudget);
-  const { t } = useT();
+  const { t, locale } = useT();
   const { defaultCurrency, toUAH, fromUAH } = useCurrency();
+
+  const [period, setPeriod] = useState<EntryPeriod>('month');
   const [amount, setAmount] = useState('');
+  const [days, setDays] = useState('30');
+  const [sync, setSync] = useState(true);
+  const [override, setOverride] = useState('');
 
   useEffect(() => {
     if (!open) return;
-    setAmount(currentValueUAH > 0 ? String(Number(fromUAH(currentValueUAH).toFixed(2))) : '');
-  }, [open, currentValueUAH]);
+    if (expectedBudget) {
+      setPeriod(expectedBudget.period);
+      setAmount(String(Number(fromUAH(expectedBudget.amount).toFixed(2))));
+    } else {
+      setPeriod('month');
+      setAmount('');
+    }
+    setDays('30');
+    setSync(true);
+    const ov = overrideMonth ? monthlyBudgets[overrideMonth] : undefined;
+    setOverride(ov != null ? String(Number(fromUAH(ov).toFixed(2))) : '');
+  }, [open, overrideMonth]);
+
+  const parsedAmount = parseFloat(amount.replace(',', '.'));
+  const parsedDays = parseInt(days, 10);
+  // amount per chosen period, expressed in the default currency
+  const perPeriodAmount =
+    period === 'custom'
+      ? !isNaN(parsedAmount) && parsedDays > 0
+        ? parsedAmount / parsedDays
+        : NaN
+      : parsedAmount;
+  const equivPeriod: BudgetPeriod = period === 'custom' ? 'day' : period;
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const parsed = parseFloat(amount.replace(',', '.'));
-    if (isNaN(parsed) || parsed < 0) return;
-    if (parsed === 0) {
-      deleteMonthlyBudget(month);
-    } else {
-      setMonthlyBudget(month, toUAH(parsed, defaultCurrency));
+    if (!isNaN(perPeriodAmount) && perPeriodAmount > 0) {
+      setExpectedBudget({ amount: toUAH(perPeriodAmount, defaultCurrency), period: equivPeriod });
+    }
+    if (overrideMonth) {
+      const ov = parseFloat(override.replace(',', '.'));
+      if (override.trim() === '' || isNaN(ov) || ov <= 0) {
+        if (monthlyBudgets[overrideMonth] != null) deleteMonthlyBudget(overrideMonth);
+      } else {
+        setMonthlyBudget(overrideMonth, toUAH(ov, defaultCurrency));
+      }
     }
     onClose();
   }
 
   return (
-    <Modal open={open} onClose={onClose} title={t('budget_setMonthlyBudget')}>
+    <Modal open={open} onClose={onClose} title={t('budget_expectedBudgetTitle')}>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <p className="text-xs text-[var(--text-2)]">{t('budget_monthlyBudgetHint')}</p>
-        <Input
-          label={t('budget_amountUah', { currency: defaultCurrency })}
-          inputMode="decimal"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          placeholder="0.00"
-          autoFocus
-        />
+
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {PERIODS.map((p) => (
+            <button key={p} type="button" onClick={() => setPeriod(p)} className={periodPill(period === p)}>
+              {t(PERIOD_KEYS[p])}
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={() => setPeriod('custom')}
+            className={periodPill(period === 'custom')}
+          >
+            {t('budget_custom')}
+          </button>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <Input
+            label={t('budget_amountUah', { currency: defaultCurrency })}
+            inputMode="decimal"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            placeholder="0.00"
+            autoFocus
+          />
+          {period === 'custom' && (
+            <Input
+              label={t('budget_customDays')}
+              type="number"
+              min={1}
+              value={days}
+              onChange={(e) => setDays(e.target.value)}
+            />
+          )}
+        </div>
+
+        <label className="flex items-center gap-2 text-sm text-[var(--text-2)]">
+          <input
+            type="checkbox"
+            checked={sync}
+            onChange={(e) => setSync(e.target.checked)}
+            className="accent-[var(--blue)]"
+          />
+          {t('budget_sync')}
+        </label>
+
+        {sync && !isNaN(perPeriodAmount) && perPeriodAmount > 0 && (
+          <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-[var(--text-2)]">
+            {PERIODS.map((p) => (
+              <span key={p}>
+                {formatAmount(convertPeriod(perPeriodAmount, equivPeriod, p), defaultCurrency)}/
+                {t(PERIOD_KEYS[p]).toLowerCase()}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {overrideMonth && (
+          <div className="border-t border-[var(--border)] pt-3 flex flex-col gap-1">
+            <span className="text-xs text-[var(--text-2)]">
+              {t('budget_overrideForMonth', { month: monthLabel(overrideMonth, locale) })}
+            </span>
+            <Input
+              inputMode="decimal"
+              value={override}
+              onChange={(e) => setOverride(e.target.value)}
+              placeholder={t('budget_overridePlaceholder')}
+            />
+          </div>
+        )}
+
         <div className="flex justify-end gap-2 mt-2">
           <Button type="button" variant="ghost" onClick={onClose}>
             {t('common_cancel')}
@@ -282,9 +423,7 @@ function RecurringRuleModal({ open, onClose }: RecurringRuleModalProps) {
             type="button"
             onClick={() => setType('income')}
             className={`rounded-lg py-2 text-sm font-medium transition ${
-              type === 'income'
-                ? 'bg-[var(--green)] text-white'
-                : 'bg-[var(--bg-hover)] text-[var(--text-2)]'
+              type === 'income' ? 'bg-[var(--green)] text-white' : 'bg-[var(--bg-hover)] text-[var(--text-2)]'
             }`}
           >
             {t('common_income')}
@@ -293,9 +432,7 @@ function RecurringRuleModal({ open, onClose }: RecurringRuleModalProps) {
             type="button"
             onClick={() => setType('expense')}
             className={`rounded-lg py-2 text-sm font-medium transition ${
-              type === 'expense'
-                ? 'bg-[var(--red)] text-white'
-                : 'bg-[var(--bg-hover)] text-[var(--text-2)]'
+              type === 'expense' ? 'bg-[var(--red)] text-white' : 'bg-[var(--bg-hover)] text-[var(--text-2)]'
             }`}
           >
             {t('common_expense')}
@@ -379,17 +516,20 @@ function RecurringRuleModal({ open, onClose }: RecurringRuleModalProps) {
 }
 
 export function Budget() {
-  const [month, setMonth] = useState(currentMonth());
+  const defaultRange = monthBounds(currentMonth());
+  const [from, setFrom] = useState(defaultRange.from);
+  const [to, setTo] = useState(defaultRange.to);
   const [formOpen, setFormOpen] = useState(false);
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
   const [limitModalOpen, setLimitModalOpen] = useState(false);
   const [recurringModalOpen, setRecurringModalOpen] = useState(false);
-  const [monthlyModalOpen, setMonthlyModalOpen] = useState(false);
+  const [expectedModalOpen, setExpectedModalOpen] = useState(false);
 
   const transactions = useStore((s) => s.transactions);
   const categories = useStore((s) => s.categories);
   const accounts = useStore((s) => s.accounts);
   const budgets = useStore((s) => s.budgets);
+  const expectedBudgetProfile = useStore((s) => s.expectedBudget);
   const monthlyBudgets = useStore((s) => s.monthlyBudgets);
   const recurringRules = useStore((s) => s.recurringRules);
   const completeTransaction = useStore((s) => s.completeTransaction);
@@ -402,13 +542,32 @@ export function Budget() {
   const { toUAH, formatUAH, defaultCurrency } = useCurrency();
   const { t, locale } = useT();
 
+  function handleRangeChange(nextFrom: string, nextTo: string) {
+    if (!nextFrom || !nextTo) {
+      // budgets are inherently periodic — "all time" is meaningless, fall back to this month
+      setFrom(defaultRange.from);
+      setTo(defaultRange.to);
+      return;
+    }
+    setFrom(nextFrom);
+    setTo(nextTo);
+  }
+
   function handleDeletePlanned(tx: Transaction) {
     deleteTransaction(tx.id);
     showToast(t('budget_deletedToast'), () => restoreTransaction(tx));
   }
 
+  const overrideMonth = singleMonthOf(from, to);
+  const rangeDays = daysInRange(from, to);
+  const rangeLabel = overrideMonth
+    ? monthLabel(overrideMonth, locale)
+    : `${format(parseISO(from), 'dd.MM.yyyy')} – ${format(parseISO(to), 'dd.MM.yyyy')}`;
+
+  const inRange = (date: string) => date >= from && date <= to;
+
   const plannedTx = transactions
-    .filter((tx) => tx.isPlanned && tx.date.startsWith(month))
+    .filter((tx) => tx.isPlanned && inRange(tx.date))
     .sort((a, b) => a.date.localeCompare(b.date));
 
   const expectedIncome = plannedTx
@@ -418,25 +577,29 @@ export function Budget() {
     .filter((tx) => tx.type === 'expense')
     .reduce((sum, tx) => sum + toUAH(tx.amount, tx.currency), 0);
 
-  const monthBudgets = budgets.filter((b) => b.month === month);
   const spentByCategory = new Map<string, number>();
   for (const tx of transactions) {
-    if (tx.isPlanned || tx.type !== 'expense' || !tx.date.startsWith(month)) continue;
+    if (tx.isPlanned || tx.type !== 'expense' || !inRange(tx.date)) continue;
     spentByCategory.set(
       tx.categoryId,
       (spentByCategory.get(tx.categoryId) ?? 0) + toUAH(tx.amount, tx.currency)
     );
   }
-  const totalMonthExpenses = Array.from(spentByCategory.values()).reduce((s, v) => s + v, 0);
+  const totalExpenses = Array.from(spentByCategory.values()).reduce((s, v) => s + v, 0);
 
-  const expectedBudget = monthlyBudgets[month] ?? 0;
-  const remaining = expectedBudget - totalMonthExpenses;
-  const overallPercent = expectedBudget > 0 ? (totalMonthExpenses / expectedBudget) * 100 : 0;
+  const expectedForRange = expectedBudgetForRange(
+    expectedBudgetProfile ?? undefined,
+    monthlyBudgets,
+    from,
+    to
+  );
+  const remaining = expectedForRange - totalExpenses;
+  const overallPercent = expectedForRange > 0 ? (totalExpenses / expectedForRange) * 100 : 0;
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <MonthPicker value={month} onChange={setMonth} />
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <DateRangeFilter onChange={handleRangeChange} />
         <div className="flex items-center gap-2 flex-wrap">
           <Button variant="ghost" onClick={() => setFormOpen(true)}>
             <span className="flex items-center gap-1.5">
@@ -457,25 +620,25 @@ export function Budget() {
       </div>
 
       <Card>
-        {expectedBudget > 0 ? (
+        {expectedForRange > 0 ? (
           <>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-3">
               <div>
                 <div className="text-xs text-[var(--text-2)] mb-1 flex items-center gap-1.5">
-                  {t('budget_monthlyBudget')}
+                  {t('budget_expected')} · {rangeLabel}
                   <button
-                    onClick={() => setMonthlyModalOpen(true)}
+                    onClick={() => setExpectedModalOpen(true)}
                     className="text-[var(--text-2)] hover:text-[var(--text-1)] transition"
-                    title={t('budget_setMonthlyBudget')}
+                    title={t('budget_expectedBudgetTitle')}
                   >
                     <Pencil size={12} />
                   </button>
                 </div>
-                <div className="text-lg font-semibold">{formatUAH(expectedBudget)}</div>
+                <div className="text-lg font-semibold">{formatUAH(expectedForRange)}</div>
               </div>
               <div>
                 <div className="text-xs text-[var(--text-2)] mb-1">{t('budget_spent')}</div>
-                <div className="text-lg font-semibold">{formatUAH(totalMonthExpenses)}</div>
+                <div className="text-lg font-semibold">{formatUAH(totalExpenses)}</div>
               </div>
               <div>
                 <div className="text-xs text-[var(--text-2)] mb-1">{t('budget_remaining')}</div>
@@ -492,11 +655,11 @@ export function Budget() {
           </>
         ) : (
           <div className="flex flex-col items-start gap-2">
-            <div className="text-sm font-medium">{t('budget_monthlyBudget')}</div>
+            <div className="text-sm font-medium">{t('budget_expectedBudgetTitle')}</div>
             <div className="text-xs text-[var(--text-2)]">{t('budget_monthlyBudgetHint')}</div>
-            <Button onClick={() => setMonthlyModalOpen(true)}>
+            <Button onClick={() => setExpectedModalOpen(true)}>
               <span className="flex items-center gap-1.5">
-                <Plus size={14} /> {t('budget_setMonthlyBudget')}
+                <Plus size={14} /> {t('budget_setExpectedBudget')}
               </span>
             </Button>
           </div>
@@ -505,12 +668,10 @@ export function Budget() {
 
       <Card>
         <h3 className="text-sm font-medium mb-3">
-          {t('budget_plannedTx')} — {monthLabel(month, locale)}
+          {t('budget_plannedTx')} — {rangeLabel}
         </h3>
         {plannedTx.length === 0 ? (
-          <div className="text-sm text-[var(--text-2)] text-center py-8">
-            {t('budget_noPlannedTx')}
-          </div>
+          <div className="text-sm text-[var(--text-2)] text-center py-8">{t('budget_noPlannedTx')}</div>
         ) : (
           <div className="flex flex-col gap-2 mb-3">
             {plannedTx.map((tx) => {
@@ -528,7 +689,9 @@ export function Budget() {
                       className="w-2 h-2 rounded-full flex-shrink-0"
                       style={{ backgroundColor: category?.color ?? '#8b949e' }}
                     />
-                    <span className="text-sm truncate">{tx.description || categoryDisplayName(category, locale)}</span>
+                    <span className="text-sm truncate">
+                      {tx.description || categoryDisplayName(category, locale)}
+                    </span>
                   </div>
                   <div className="flex items-center gap-3 flex-shrink-0">
                     <div className="text-right">
@@ -590,9 +753,7 @@ export function Budget() {
       <Card>
         <h3 className="text-sm font-medium mb-3">{t('budget_recurringTx')}</h3>
         {recurringRules.length === 0 ? (
-          <div className="text-sm text-[var(--text-2)] text-center py-8">
-            {t('budget_noRecurringTx')}
-          </div>
+          <div className="text-sm text-[var(--text-2)] text-center py-8">{t('budget_noRecurringTx')}</div>
         ) : (
           <div className="flex flex-col gap-1.5">
             {recurringRules.map((rule) => {
@@ -623,11 +784,9 @@ export function Budget() {
                         rule.type === 'income' ? 'text-[var(--green)]' : 'text-[var(--red)]'
                       }`}
                     >
-                      {formatAmount(
-                        rule.type === 'income' ? rule.amount : -rule.amount,
-                        rule.currency,
-                        { sign: true }
-                      )}
+                      {formatAmount(rule.type === 'income' ? rule.amount : -rule.amount, rule.currency, {
+                        sign: true,
+                      })}
                     </span>
                     <button
                       onClick={() => toggleRecurringRule(rule.id)}
@@ -652,20 +811,20 @@ export function Budget() {
 
       <Card>
         <h3 className="text-sm font-medium mb-3">{t('budget_budgetByCategory')}</h3>
-        {monthBudgets.length === 0 ? (
-          <div className="text-sm text-[var(--text-2)] text-center py-8">
-            {t('budget_noLimitsSet')}
-          </div>
+        {budgets.length === 0 ? (
+          <div className="text-sm text-[var(--text-2)] text-center py-8">{t('budget_noLimitsSet')}</div>
         ) : (
           <div className="flex flex-col gap-3">
-            {monthBudgets.map((b) => {
+            {budgets.map((b) => {
               const category = categories.find((c) => c.id === b.categoryId);
               const spent = spentByCategory.get(b.categoryId) ?? 0;
-              const limit = resolveBudgetLimit(b, expectedBudget);
+              const limit = resolveBudgetLimit(b, expectedForRange, rangeDays);
               const percent = limit > 0 ? (spent / limit) * 100 : 0;
               const over = percent > 100;
-              const actualShare =
-                expectedBudget > 0 ? (spent / expectedBudget) * 100 : 0;
+              const ruleNote =
+                b.percent != null
+                  ? `${b.percent}%`
+                  : `${formatUAH(b.amountUAH ?? 0)}/${t(PERIOD_KEYS[b.period]).toLowerCase()}`;
               return (
                 <div key={b.id}>
                   <div className="flex items-center justify-between text-xs mb-1">
@@ -674,16 +833,10 @@ export function Budget() {
                         className="w-2 h-2 rounded-full"
                         style={{ backgroundColor: category?.color ?? '#8b949e' }}
                       />
-                      <span
-                        className={over ? 'text-[var(--red)] font-medium' : 'text-[var(--text-1)]'}
-                      >
+                      <span className={over ? 'text-[var(--red)] font-medium' : 'text-[var(--text-1)]'}>
                         {categoryDisplayName(category, locale) ?? t('common_other')}
                       </span>
-                      {b.percent != null && (
-                        <span className="text-[var(--text-2)]">
-                          ({t('budget_planActual', { plan: b.percent, actual: actualShare.toFixed(1) })})
-                        </span>
-                      )}
+                      <span className="text-[var(--text-2)]">({ruleNote})</span>
                     </div>
                     <div className="flex items-center gap-3">
                       <span className={over ? 'text-[var(--red)]' : 'text-[var(--text-2)]'}>
@@ -714,21 +867,13 @@ export function Budget() {
         defaultPlanned
         editTransaction={editingTx ?? undefined}
       />
-      <BudgetLimitModal
-        open={limitModalOpen}
-        onClose={() => setLimitModalOpen(false)}
-        month={month}
+      <BudgetLimitModal open={limitModalOpen} onClose={() => setLimitModalOpen(false)} />
+      <ExpectedBudgetModal
+        open={expectedModalOpen}
+        onClose={() => setExpectedModalOpen(false)}
+        overrideMonth={overrideMonth}
       />
-      <MonthlyBudgetModal
-        open={monthlyModalOpen}
-        onClose={() => setMonthlyModalOpen(false)}
-        month={month}
-        currentValueUAH={expectedBudget}
-      />
-      <RecurringRuleModal
-        open={recurringModalOpen}
-        onClose={() => setRecurringModalOpen(false)}
-      />
+      <RecurringRuleModal open={recurringModalOpen} onClose={() => setRecurringModalOpen(false)} />
     </div>
   );
 }

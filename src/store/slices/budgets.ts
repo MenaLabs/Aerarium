@@ -1,24 +1,45 @@
 import type { StateCreator } from 'zustand';
-import type { Budget } from '@/types';
+import type { Budget, BudgetPeriod, ExpectedBudget } from '@/types';
 import { persist, type RootState } from '../index';
 import { uid } from '@/shared/utils/dates';
 
 export interface BudgetsSlice {
   budgets: Budget[];
+  expectedBudget: ExpectedBudget | null;
   monthlyBudgets: Record<string, number>;
   setBudgets: (budgets: Budget[]) => void;
+  setExpectedBudget: (profile: ExpectedBudget | null) => void;
   setMonthlyBudgets: (monthlyBudgets: Record<string, number>) => void;
   setMonthlyBudget: (month: string, amountUAH: number) => void;
   deleteMonthlyBudget: (month: string) => void;
-  setBudget: (month: string, categoryId: string, amountUAH: number) => void;
-  setBudgetPercent: (month: string, categoryId: string, percent: number) => void;
+  setBudget: (categoryId: string, amountUAH: number, period: BudgetPeriod) => void;
+  setBudgetPercent: (categoryId: string, percent: number, period: BudgetPeriod) => void;
   deleteBudget: (id: string) => void;
+}
+
+function upsertBudget(
+  budgets: Budget[],
+  categoryId: string,
+  patch: Partial<Budget>
+): Budget[] {
+  const existing = budgets.find((b) => b.categoryId === categoryId);
+  if (existing) {
+    return budgets.map((b) =>
+      b.id === existing.id ? { ...b, amountUAH: undefined, percent: undefined, ...patch } : b
+    );
+  }
+  return [...budgets, { id: uid(), categoryId, period: 'month', ...patch } as Budget];
 }
 
 export const createBudgetsSlice: StateCreator<RootState, [], [], BudgetsSlice> = (set, get) => ({
   budgets: [],
+  expectedBudget: null,
   monthlyBudgets: {},
   setBudgets: (budgets) => set({ budgets }),
+  setExpectedBudget: (profile) => {
+    set({ expectedBudget: profile });
+    persist(get);
+  },
   setMonthlyBudgets: (monthlyBudgets) => set({ monthlyBudgets }),
   setMonthlyBudget: (month, amountUAH) => {
     set({ monthlyBudgets: { ...get().monthlyBudgets, [month]: amountUAH } });
@@ -30,32 +51,12 @@ export const createBudgetsSlice: StateCreator<RootState, [], [], BudgetsSlice> =
     set({ monthlyBudgets: next });
     persist(get);
   },
-  setBudget: (month, categoryId, amountUAH) => {
-    const existing = get().budgets.find((b) => b.month === month && b.categoryId === categoryId);
-    if (existing) {
-      set({
-        budgets: get().budgets.map((b) =>
-          b.id === existing.id ? { ...b, amountUAH, percent: undefined } : b
-        ),
-      });
-    } else {
-      const budget: Budget = { id: uid(), month, categoryId, amountUAH };
-      set({ budgets: [...get().budgets, budget] });
-    }
+  setBudget: (categoryId, amountUAH, period) => {
+    set({ budgets: upsertBudget(get().budgets, categoryId, { amountUAH, period }) });
     persist(get);
   },
-  setBudgetPercent: (month, categoryId, percent) => {
-    const existing = get().budgets.find((b) => b.month === month && b.categoryId === categoryId);
-    if (existing) {
-      set({
-        budgets: get().budgets.map((b) =>
-          b.id === existing.id ? { ...b, percent, amountUAH: undefined } : b
-        ),
-      });
-    } else {
-      const budget: Budget = { id: uid(), month, categoryId, percent };
-      set({ budgets: [...get().budgets, budget] });
-    }
+  setBudgetPercent: (categoryId, percent, period) => {
+    set({ budgets: upsertBudget(get().budgets, categoryId, { percent, period }) });
     persist(get);
   },
   deleteBudget: (id) => {

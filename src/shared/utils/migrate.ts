@@ -1,4 +1,4 @@
-import type { AppData } from '../../types';
+import type { AppData, BudgetPeriod } from '../../types';
 import { DEFAULT_DATA } from './defaultData';
 
 // Consumed by both the renderer (path-aliased) and electron/main.ts (no alias),
@@ -28,6 +28,44 @@ function migrateCategories(data: AppData): AppData {
 const MIGRATIONS: Array<(data: AppData) => AppData> = [
   // v0 -> v1: baseline. Field defaults are handled idempotently by normalize().
   (data) => data,
+  // v1 -> v2: budgets become recurring (period-based) instead of per-month.
+  (data) => {
+    const d = { ...data } as AppData & {
+      budgets?: Array<{
+        id: string;
+        categoryId: string;
+        month?: string;
+        amountUAH?: number;
+        percent?: number;
+        period?: string;
+      }>;
+    };
+    // Seed the recurring expected budget from the most recent monthly override.
+    const overrides = d.monthlyBudgets ?? {};
+    if (!d.expectedBudget) {
+      const months = Object.keys(overrides).sort();
+      if (months.length > 0) {
+        d.expectedBudget = { amount: overrides[months[months.length - 1]], period: 'month' };
+      }
+    }
+    // Collapse any per-month category budgets to a single recurring one per
+    // category (keep the latest month's value), tagged as a monthly period.
+    if (Array.isArray(d.budgets)) {
+      const byCategory = new Map<string, (typeof d.budgets)[number]>();
+      for (const b of d.budgets) {
+        const prev = byCategory.get(b.categoryId);
+        if (!prev || (b.month ?? '') >= (prev.month ?? '')) byCategory.set(b.categoryId, b);
+      }
+      d.budgets = Array.from(byCategory.values()).map((b) => ({
+        id: b.id,
+        categoryId: b.categoryId,
+        amountUAH: b.amountUAH,
+        percent: b.percent,
+        period: (b.period as BudgetPeriod) ?? 'month',
+      }));
+    }
+    return d as AppData;
+  },
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;

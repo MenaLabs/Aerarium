@@ -2,7 +2,8 @@ import { Card } from '@/shared/components/Card';
 import { ProgressBar } from '@/shared/components/ProgressBar';
 import { useStore } from '@/store';
 import { useCurrency } from '@/shared/hooks/useCurrency';
-import { resolveBudgetLimit } from '@/shared/utils/budget';
+import { daysInRange, expectedBudgetForRange, resolveBudgetLimit } from '@/shared/utils/budget';
+import { monthBounds } from '@/shared/utils/dates';
 import { useT } from '@/shared/i18n';
 import { categoryDisplayName } from '@/shared/utils/categoryName';
 
@@ -12,14 +13,22 @@ interface BudgetProgressProps {
 
 export function BudgetProgress({ month }: BudgetProgressProps) {
   const budgets = useStore((s) => s.budgets);
+  const expectedBudgetProfile = useStore((s) => s.expectedBudget);
   const monthlyBudgets = useStore((s) => s.monthlyBudgets);
   const categories = useStore((s) => s.categories);
   const transactions = useStore((s) => s.transactions);
   const { toUAH, formatUAH } = useCurrency();
   const { t, locale } = useT();
 
-  const monthBudgets = budgets.filter((b) => b.month === month).slice(0, 5);
-  const expectedBudget = monthlyBudgets[month] ?? 0;
+  const monthBudgets = budgets.slice(0, 5);
+  const { from, to } = monthBounds(month);
+  const rangeDays = daysInRange(from, to);
+  const expectedForMonth = expectedBudgetForRange(
+    expectedBudgetProfile ?? undefined,
+    monthlyBudgets,
+    from,
+    to
+  );
 
   const spentByCategory = new Map<string, number>();
   for (const tx of transactions) {
@@ -40,7 +49,7 @@ export function BudgetProgress({ month }: BudgetProgressProps) {
           {monthBudgets.map((b) => {
             const category = categories.find((c) => c.id === b.categoryId);
             const spent = spentByCategory.get(b.categoryId) ?? 0;
-            const limit = resolveBudgetLimit(b, expectedBudget);
+            const limit = resolveBudgetLimit(b, expectedForMonth, rangeDays);
             const percent = limit > 0 ? (spent / limit) * 100 : 0;
             const over = percent > 100;
             return (
