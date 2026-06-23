@@ -2,6 +2,7 @@ import type { AppData, PdfReportPayload } from '@/types';
 
 export interface PlatformCapabilities {
   pdfExport: boolean;
+  imageExport: boolean;
   nativeSaveDialog: boolean;
 }
 
@@ -17,5 +18,9 @@ export interface PlatformAPI {
     { ok: true; rates: Record<string, number> } | { ok: false; error: string }
   >;
   exportPDF: (payload: PdfReportPayload) => Promise<{ canceled: boolean; filePath?: string }>;
+  exportChartPNG: (
+    dataUrl: string,
+    suggestedName: string
+  ) => Promise<{ canceled: boolean; filePath?: string }>;
   openExternal: (url: string) => Promise<void>;
 }

@@ -95,6 +95,7 @@ export interface Settings {
 export type ChartVisual = 'line' | 'bar' | 'pie' | 'table';
 export type ChartMetric =
   | 'balance'
+  | 'balanceProjection'
   | 'incomeExpense'
   | 'categoryBreakdown'
   | 'categoryCompare'

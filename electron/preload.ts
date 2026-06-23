@@ -15,5 +15,10 @@ contextBridge.exposeInMainWorld('api', {
   > => ipcRenderer.invoke('fetch-rates'),
   exportPDF: (payload: PdfReportPayload): Promise<{ canceled: boolean; filePath?: string }> =>
     ipcRenderer.invoke('export-pdf', payload),
+  exportChartPNG: (
+    dataUrl: string,
+    suggestedName: string
+  ): Promise<{ canceled: boolean; filePath?: string }> =>
+    ipcRenderer.invoke('export-chart-png', dataUrl, suggestedName),
   openExternal: (url: string): Promise<void> => ipcRenderer.invoke('open-external', url),
 });

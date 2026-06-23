@@ -391,6 +391,33 @@ async function exportPDF(
   return { canceled: false, filePath: result.filePath };
 }
 
+function sanitizeFileName(name: string): string {
+  const cleaned = name.replace(/[\\/:*?"<>|]/g, '_').trim();
+  return cleaned || 'chart';
+}
+
+async function exportChartPNG(
+  dataUrl: string,
+  suggestedName: string
+): Promise<{ canceled: boolean; filePath?: string }> {
+  const locale = loadData().settings.locale;
+  const saveOptions = {
+    title: tMain(locale, 'analytics_exportChart'),
+    defaultPath: `${sanitizeFileName(suggestedName)}.png`,
+    filters: [{ name: 'PNG', extensions: ['png'] }],
+  };
+  const win = BrowserWindow.getFocusedWindow();
+  const result = win
+    ? await dialog.showSaveDialog(win, saveOptions)
+    : await dialog.showSaveDialog(saveOptions);
+  if (result.canceled || !result.filePath) {
+    return { canceled: true };
+  }
+  const base64 = dataUrl.replace(/^data:image\/png;base64,/, '');
+  fs.writeFileSync(result.filePath, Buffer.from(base64, 'base64'));
+  return { canceled: false, filePath: result.filePath };
+}
+
 function createWindow(): void {
   const win = new BrowserWindow({
     width: 1280,
@@ -428,6 +455,9 @@ ipcMain.handle('backup-data', () => backupData());
 ipcMain.handle('restore-data', () => restoreData());
 ipcMain.handle('fetch-rates', () => fetchRates());
 ipcMain.handle('export-pdf', (_event, payload: PdfReportPayload) => exportPDF(payload));
+ipcMain.handle('export-chart-png', (_event, dataUrl: string, suggestedName: string) =>
+  exportChartPNG(dataUrl, suggestedName)
+);
 ipcMain.handle('open-external', (_event, url: string) => shell.openExternal(url));
 
 app.whenReady().then(() => {

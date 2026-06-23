@@ -13,12 +13,16 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts';
-import { Settings2, X } from 'lucide-react';
+import { useRef } from 'react';
+import { Settings2, X, ImageDown } from 'lucide-react';
 import { Card } from '@/shared/components/Card';
 import { useStore } from '@/store';
 import { useCurrency } from '@/shared/hooks/useCurrency';
 import { useT } from '@/shared/i18n';
+import { platform } from '@/shared/platform';
+import { chartSvgToPngDataUrl } from '@/shared/utils/chartExport';
 import {
+  computeBalanceProjection,
   computeCategoryBreakdown,
   computeCategoryCompare,
   computeIncomeExpenseSeries,
@@ -47,14 +51,41 @@ function EmptyMsg({ text }: { text: string }) {
 export function ChartWidgetCard({ widget, onEdit, onDelete }: ChartWidgetCardProps) {
   const transactions = useStore((s) => s.transactions);
   const categories = useStore((s) => s.categories);
+  const accounts = useStore((s) => s.accounts);
+  const recurringRules = useStore((s) => s.recurringRules);
   const { toUAH, formatUAH } = useCurrency();
   const { t, locale } = useT();
-  const ctx = { transactions, categories, toUAH, locale, otherLabel: t('common_other') };
+  const chartRef = useRef<HTMLDivElement>(null);
+  const canExport = platform.capabilities.imageExport && widget.visual !== 'table';
+
+  async function handleExport() {
+    const svg = chartRef.current?.querySelector('svg');
+    if (!svg) return;
+    const dataUrl = await chartSvgToPngDataUrl(svg as SVGSVGElement);
+    await platform.exportChartPNG(dataUrl, widget.title);
+  }
+
+  const ctx = {
+    transactions,
+    categories,
+    accounts,
+    recurringRules,
+    toUAH,
+    locale,
+    otherLabel: t('common_other'),
+  };
 
   let body: React.ReactNode;
 
-  if (widget.metric === 'balance' || widget.metric === 'singleCategoryTrend') {
-    const data = computeSingleSeries(widget, ctx);
+  if (
+    widget.metric === 'balance' ||
+    widget.metric === 'singleCategoryTrend' ||
+    widget.metric === 'balanceProjection'
+  ) {
+    const data =
+      widget.metric === 'balanceProjection'
+        ? computeBalanceProjection(widget, ctx)
+        : computeSingleSeries(widget, ctx);
     body = (
       <ResponsiveContainer width="100%" height={240}>
         {widget.visual === 'bar' ? (
@@ -192,6 +223,15 @@ export function ChartWidgetCard({ widget, onEdit, onDelete }: ChartWidgetCardPro
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-medium">{widget.title}</h3>
         <div className="flex items-center gap-2">
+          {canExport && (
+            <button
+              onClick={handleExport}
+              title={t('analytics_exportChart')}
+              className="text-[var(--text-2)] hover:text-[var(--text-1)] transition"
+            >
+              <ImageDown size={14} />
+            </button>
+          )}
           <button onClick={onEdit} className="text-[var(--text-2)] hover:text-[var(--text-1)] transition">
             <Settings2 size={14} />
           </button>
@@ -200,7 +240,7 @@ export function ChartWidgetCard({ widget, onEdit, onDelete }: ChartWidgetCardPro
           </button>
         </div>
       </div>
-      {body}
+      <div ref={chartRef}>{body}</div>
     </Card>
   );
 }

@@ -1,10 +1,20 @@
-import type { Category, ChartWidget, Currency, Locale, Transaction } from '@/types';
-import { currentMonth, monthLabel, monthRange, prevMonth } from '@/shared/utils/dates';
+import type {
+  Account,
+  Category,
+  ChartWidget,
+  Currency,
+  Locale,
+  RecurringRule,
+  Transaction,
+} from '@/types';
+import { currentMonth, monthLabel, monthRange, nextMonth, prevMonth } from '@/shared/utils/dates';
 import { categoryDisplayName } from '@/shared/utils/categoryName';
 
 export interface ChartCtx {
   transactions: Transaction[];
   categories: Category[];
+  accounts: Account[];
+  recurringRules: RecurringRule[];
   toUAH: (amount: number, currency: Currency) => number;
   locale: Locale;
   otherLabel: string;
@@ -40,6 +50,62 @@ export function computeSingleSeries(widget: ChartWidget, ctx: ChartCtx) {
       }
     }
     return { month: ym, label: shortLabel(ym, ctx.locale), value };
+  });
+}
+
+function countWeekdayOccurrences(ym: string, weekday: number): number {
+  const [y, m] = ym.split('-').map(Number);
+  const days = new Date(y, m, 0).getDate();
+  let count = 0;
+  for (let d = 1; d <= days; d++) {
+    if (new Date(y, m - 1, d).getDay() === weekday) count++;
+  }
+  return count;
+}
+
+// Forecasts the running total balance forward over `period` months.
+// Start = current net balance across accounts. Each step adds the month's
+// expected net flow:
+//  - current month: remaining planned (not-yet-completed) transactions — these
+//    already include recurring occurrences auto-generated for this month;
+//  - future months: recurring rules projected by frequency, plus any manual
+//    (non-recurring) planned transactions dated in that month.
+// This avoids double-counting recurring items, since recurring-generated planned
+// transactions only exist for the current month.
+export function computeBalanceProjection(widget: ChartWidget, ctx: ChartCtx) {
+  const horizon = PERIOD_MONTHS[widget.period];
+  const months: string[] = [currentMonth()];
+  for (let i = 0; i < horizon; i++) months.push(nextMonth(months[months.length - 1]));
+
+  let running = ctx.accounts.reduce(
+    (sum, a) => sum + (widget.accountId && a.id !== widget.accountId ? 0 : ctx.toUAH(a.balance, a.currency)),
+    0
+  );
+
+  return months.map((ym, idx) => {
+    let flow = 0;
+    if (idx === 0) {
+      for (const t of ctx.transactions) {
+        if (!t.isPlanned || !t.date.startsWith(ym) || !matchesFilters(t, widget)) continue;
+        flow += ctx.toUAH(t.amount, t.currency) * (t.type === 'income' ? 1 : -1);
+      }
+    } else {
+      for (const r of ctx.recurringRules) {
+        if (!r.active) continue;
+        if (widget.accountId && r.accountId !== widget.accountId) continue;
+        if (widget.currency && r.currency !== widget.currency) continue;
+        const occ = r.frequency === 'monthly' ? 1 : countWeekdayOccurrences(ym, r.weekday ?? 0);
+        flow += occ * ctx.toUAH(r.amount, r.currency) * (r.type === 'income' ? 1 : -1);
+      }
+      for (const t of ctx.transactions) {
+        if (!t.isPlanned || t.recurringId || !t.date.startsWith(ym) || !matchesFilters(t, widget)) {
+          continue;
+        }
+        flow += ctx.toUAH(t.amount, t.currency) * (t.type === 'income' ? 1 : -1);
+      }
+    }
+    running += flow;
+    return { month: ym, label: shortLabel(ym, ctx.locale), value: running };
   });
 }
 

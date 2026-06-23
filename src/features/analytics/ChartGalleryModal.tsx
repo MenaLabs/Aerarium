@@ -4,6 +4,7 @@ import {
   BarChart3,
   PieChart as PieIcon,
   Table as TableIcon,
+  TrendingUp,
   Plus,
   ChevronDown,
   ChevronRight,
@@ -36,6 +37,14 @@ const PRESETS: Preset[] = [
     visual: 'line',
     period: 'year',
     icon: LineIcon,
+  },
+  {
+    titleKey: 'analytics_preset_projection_title',
+    descKey: 'analytics_preset_projection_desc',
+    metric: 'balanceProjection',
+    visual: 'line',
+    period: 'year',
+    icon: TrendingUp,
   },
   {
     titleKey: 'analytics_preset_incomeExpense_title',
@@ -73,6 +82,7 @@ const PRESETS: Preset[] = [
 
 const METRIC_LABEL_KEYS: Record<ChartMetric, TranslationKey> = {
   balance: 'analytics_metric_balance',
+  balanceProjection: 'analytics_metric_balanceProjection',
   incomeExpense: 'analytics_metric_incomeExpense',
   categoryBreakdown: 'analytics_metric_categoryBreakdown',
   categoryCompare: 'analytics_metric_categoryCompare',
@@ -82,6 +92,7 @@ const METRIC_LABEL_KEYS: Record<ChartMetric, TranslationKey> = {
 
 const METRIC_VISUALS: Record<ChartMetric, ChartVisual[]> = {
   balance: ['line', 'bar'],
+  balanceProjection: ['line'],
   incomeExpense: ['bar'],
   categoryBreakdown: ['pie', 'bar'],
   categoryCompare: ['bar'],
