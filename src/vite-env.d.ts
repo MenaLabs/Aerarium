@@ -16,7 +16,7 @@ declare global {
       >;
       exportPDF: (payload: PdfReportPayload) => Promise<{ canceled: boolean; filePath?: string }>;
       exportChartPNG: (
-        dataUrl: string,
+        rect: { x: number; y: number; width: number; height: number },
         suggestedName: string
       ) => Promise<{ canceled: boolean; filePath?: string }>;
       openExternal: (url: string) => Promise<void>;

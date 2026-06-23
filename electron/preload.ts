@@ -16,9 +16,9 @@ contextBridge.exposeInMainWorld('api', {
   exportPDF: (payload: PdfReportPayload): Promise<{ canceled: boolean; filePath?: string }> =>
     ipcRenderer.invoke('export-pdf', payload),
   exportChartPNG: (
-    dataUrl: string,
+    rect: { x: number; y: number; width: number; height: number },
     suggestedName: string
   ): Promise<{ canceled: boolean; filePath?: string }> =>
-    ipcRenderer.invoke('export-chart-png', dataUrl, suggestedName),
+    ipcRenderer.invoke('export-chart-png', rect, suggestedName),
   openExternal: (url: string): Promise<void> => ipcRenderer.invoke('open-external', url),
 });

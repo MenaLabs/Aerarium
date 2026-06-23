@@ -7,6 +7,7 @@ import { en } from '../src/shared/i18n/en';
 import { uk } from '../src/shared/i18n/uk';
 import { FIAT_CURRENCIES, CRYPTO_CURRENCIES } from '../src/shared/utils/currencies';
 import { categoryDisplayName } from '../src/shared/utils/categoryName';
+import { migrateAppData } from '../src/shared/utils/migrate';
 
 const DICTS = { en, uk };
 
@@ -38,24 +39,6 @@ function ensureDataDir(): void {
   }
 }
 
-const DEFAULT_CATEGORY_BY_ID = new Map(DEFAULT_DATA.categories.map((c) => [c.id, c]));
-
-function migrateCategories(data: AppData): AppData {
-  const needsMigration = data.categories.some((c) => {
-    const seed = DEFAULT_CATEGORY_BY_ID.get(c.id);
-    return seed && (!c.isDefault || (seed.isOther && !c.isOther));
-  });
-  if (!needsMigration) return data;
-  return {
-    ...data,
-    categories: data.categories.map((c) => {
-      const seed = DEFAULT_CATEGORY_BY_ID.get(c.id);
-      if (!seed) return c;
-      return { ...c, isDefault: true, ...(seed.isOther ? { isOther: true } : {}) };
-    }),
-  };
-}
-
 function detectSystemLocale(): Locale {
   return app.getLocale().toLowerCase().startsWith('uk') ? 'uk' : 'en';
 }
@@ -67,18 +50,7 @@ function loadData(): AppData {
   }
   try {
     const raw = fs.readFileSync(dataFile, 'utf-8');
-    const parsed = JSON.parse(raw) as AppData;
-    if (!parsed.transfers) parsed.transfers = [];
-    if (!parsed.recurringRules) parsed.recurringRules = [];
-    if (!parsed.chartWidgets) parsed.chartWidgets = [];
-    if (!parsed.monthlyBudgets) parsed.monthlyBudgets = {};
-    if (parsed.settings && parsed.settings.autoImportRates === undefined) {
-      parsed.settings.autoImportRates = false;
-    }
-    if (parsed.settings && !parsed.settings.locale) {
-      parsed.settings.locale = 'uk';
-    }
-    return migrateCategories(parsed);
+    return migrateAppData(JSON.parse(raw) as AppData);
   } catch {
     return DEFAULT_DATA;
   }
@@ -227,7 +199,7 @@ async function restoreData(): Promise<{ canceled: boolean; data?: AppData; error
   const raw = fs.readFileSync(result.filePaths[0], 'utf-8');
   let data: AppData;
   try {
-    data = JSON.parse(raw) as AppData;
+    data = migrateAppData(JSON.parse(raw) as AppData);
   } catch {
     return { canceled: true, error: tMain(locale, 'settings_backupDecryptError') };
   }
@@ -398,24 +370,30 @@ function sanitizeFileName(name: string): string {
 }
 
 async function exportChartPNG(
-  dataUrl: string,
+  rect: { x: number; y: number; width: number; height: number },
   suggestedName: string
 ): Promise<{ canceled: boolean; filePath?: string }> {
+  const win = BrowserWindow.getFocusedWindow();
+  if (!win) return { canceled: true };
   const locale = loadData().settings.locale;
+  // Capture the live rendered region (resolves all CSS vars/fonts) rather than
+  // re-serializing the SVG, which is brittle.
+  const image = await win.webContents.capturePage({
+    x: Math.max(0, Math.round(rect.x)),
+    y: Math.max(0, Math.round(rect.y)),
+    width: Math.max(1, Math.round(rect.width)),
+    height: Math.max(1, Math.round(rect.height)),
+  });
   const saveOptions = {
     title: tMain(locale, 'analytics_exportChart'),
     defaultPath: `${sanitizeFileName(suggestedName)}.png`,
     filters: [{ name: 'PNG', extensions: ['png'] }],
   };
-  const win = BrowserWindow.getFocusedWindow();
-  const result = win
-    ? await dialog.showSaveDialog(win, saveOptions)
-    : await dialog.showSaveDialog(saveOptions);
+  const result = await dialog.showSaveDialog(win, saveOptions);
   if (result.canceled || !result.filePath) {
     return { canceled: true };
   }
-  const base64 = dataUrl.replace(/^data:image\/png;base64,/, '');
-  fs.writeFileSync(result.filePath, Buffer.from(base64, 'base64'));
+  fs.writeFileSync(result.filePath, image.toPNG());
   return { canceled: false, filePath: result.filePath };
 }
 
@@ -456,8 +434,10 @@ ipcMain.handle('backup-data', () => backupData());
 ipcMain.handle('restore-data', () => restoreData());
 ipcMain.handle('fetch-rates', () => fetchRates());
 ipcMain.handle('export-pdf', (_event, payload: PdfReportPayload) => exportPDF(payload));
-ipcMain.handle('export-chart-png', (_event, dataUrl: string, suggestedName: string) =>
-  exportChartPNG(dataUrl, suggestedName)
+ipcMain.handle(
+  'export-chart-png',
+  (_event, rect: { x: number; y: number; width: number; height: number }, suggestedName: string) =>
+    exportChartPNG(rect, suggestedName)
 );
 ipcMain.handle('open-external', (_event, url: string) => shell.openExternal(url));
 

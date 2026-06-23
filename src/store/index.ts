@@ -9,6 +9,7 @@ import { createTransfersSlice, type TransfersSlice } from './slices/transfers';
 import { createRecurringSlice, type RecurringSlice } from './slices/recurring';
 import { createChartsSlice, type ChartsSlice } from './slices/charts';
 import { createSettingsSlice, type SettingsSlice } from './slices/settings';
+import { SCHEMA_VERSION } from '@/shared/utils/migrate';
 
 export type RootState = AccountsSlice &
   TransactionsSlice &
@@ -30,6 +31,7 @@ export function persist(get: () => RootState): void {
   const state = get();
   const data: AppData = {
     version: '1.0.0',
+    schemaVersion: SCHEMA_VERSION,
     accounts: state.accounts,
     transactions: state.transactions,
     categories: state.categories,

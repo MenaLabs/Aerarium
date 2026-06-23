@@ -130,6 +130,7 @@ export interface PdfReportPayload {
 
 export interface AppData {
   version: string;
+  schemaVersion?: number; // data-shape version, drives the migration pipeline
   accounts: Account[];
   transactions: Transaction[];
   categories: Category[];

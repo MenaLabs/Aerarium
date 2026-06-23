@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { format, parseISO } from 'date-fns';
 import {
   CreditCard,
@@ -55,6 +55,18 @@ function AccountModal({ open, onClose, account }: AccountModalProps) {
   const [type, setType] = useState<AccountType>(account?.type ?? 'card');
   const [balance, setBalance] = useState(String(account?.balance ?? 0));
   const [color, setColor] = useState(account?.color ?? PALETTE[0]);
+
+  // The modal stays mounted; re-seed all fields whenever it opens (for create)
+  // or the edited account changes, otherwise stale values from the previous
+  // edit leak into the next one.
+  useEffect(() => {
+    if (!open) return;
+    setName(account?.name ?? '');
+    setCurrency(account?.currency ?? defaultCurrency);
+    setType(account?.type ?? 'card');
+    setBalance(String(account?.balance ?? 0));
+    setColor(account?.color ?? PALETTE[0]);
+  }, [open, account, defaultCurrency]);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

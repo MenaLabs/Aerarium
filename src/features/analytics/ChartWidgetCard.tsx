@@ -20,7 +20,6 @@ import { useStore } from '@/store';
 import { useCurrency } from '@/shared/hooks/useCurrency';
 import { useT } from '@/shared/i18n';
 import { platform } from '@/shared/platform';
-import { chartSvgToPngDataUrl } from '@/shared/utils/chartExport';
 import {
   computeBalanceProjection,
   computeCategoryBreakdown,
@@ -59,10 +58,13 @@ export function ChartWidgetCard({ widget, onEdit, onDelete }: ChartWidgetCardPro
   const canExport = platform.capabilities.imageExport && widget.visual !== 'table';
 
   async function handleExport() {
-    const svg = chartRef.current?.querySelector('svg');
-    if (!svg) return;
-    const dataUrl = await chartSvgToPngDataUrl(svg as SVGSVGElement);
-    await platform.exportChartPNG(dataUrl, widget.title);
+    const el = chartRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    await platform.exportChartPNG(
+      { x: r.left, y: r.top, width: r.width, height: r.height },
+      widget.title
+    );
   }
 
   const ctx = {
