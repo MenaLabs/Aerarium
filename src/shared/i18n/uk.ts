@@ -141,7 +141,10 @@ export const uk: Record<keyof typeof en, string> = {
   accounts_transferDeletedToast: 'Переказ видалено',
   accounts_amountIn: 'Сума ({currency})',
 
-  budget_budgetSet: 'Бюджет встановлено',
+  budget_monthlyBudget: 'Очікуваний місячний бюджет',
+  budget_setMonthlyBudget: 'Задати місячний бюджет',
+  budget_monthlyBudgetHint:
+    'Вкажіть суму, яку плануєте витратити за місяць — від неї рахуються відсотки категорій.',
   budget_spent: 'Витрачено',
   budget_remaining: 'Залишок',
   budget_plannedTx: 'Заплановані транзакції',
@@ -159,8 +162,8 @@ export const uk: Record<keyof typeof en, string> = {
   budget_budgetBtn: 'Бюджет',
   budget_setLimitTitle: 'Встановити ліміт',
   budget_amountUah: 'Сума ({currency})',
-  budget_percentOfExpenses: '% від витрат',
-  budget_percentInput: '% від загальних витрат за місяць',
+  budget_percentOfExpenses: '% від бюджету',
+  budget_percentInput: '% від очікуваного місячного бюджету',
   budget_newRecurringTitle: 'Нова регулярна транзакція',
   budget_frequency: 'Періодичність',
   budget_monthly: 'Щомісяця',

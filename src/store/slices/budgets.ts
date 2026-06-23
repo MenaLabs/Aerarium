@@ -5,7 +5,11 @@ import { uid } from '@/shared/utils/dates';
 
 export interface BudgetsSlice {
   budgets: Budget[];
+  monthlyBudgets: Record<string, number>;
   setBudgets: (budgets: Budget[]) => void;
+  setMonthlyBudgets: (monthlyBudgets: Record<string, number>) => void;
+  setMonthlyBudget: (month: string, amountUAH: number) => void;
+  deleteMonthlyBudget: (month: string) => void;
   setBudget: (month: string, categoryId: string, amountUAH: number) => void;
   setBudgetPercent: (month: string, categoryId: string, percent: number) => void;
   deleteBudget: (id: string) => void;
@@ -13,7 +17,19 @@ export interface BudgetsSlice {
 
 export const createBudgetsSlice: StateCreator<RootState, [], [], BudgetsSlice> = (set, get) => ({
   budgets: [],
+  monthlyBudgets: {},
   setBudgets: (budgets) => set({ budgets }),
+  setMonthlyBudgets: (monthlyBudgets) => set({ monthlyBudgets }),
+  setMonthlyBudget: (month, amountUAH) => {
+    set({ monthlyBudgets: { ...get().monthlyBudgets, [month]: amountUAH } });
+    persist(get);
+  },
+  deleteMonthlyBudget: (month) => {
+    const next = { ...get().monthlyBudgets };
+    delete next[month];
+    set({ monthlyBudgets: next });
+    persist(get);
+  },
   setBudget: (month, categoryId, amountUAH) => {
     const existing = get().budgets.find((b) => b.month === month && b.categoryId === categoryId);
     if (existing) {

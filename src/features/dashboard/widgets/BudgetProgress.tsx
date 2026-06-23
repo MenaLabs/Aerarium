@@ -12,12 +12,14 @@ interface BudgetProgressProps {
 
 export function BudgetProgress({ month }: BudgetProgressProps) {
   const budgets = useStore((s) => s.budgets);
+  const monthlyBudgets = useStore((s) => s.monthlyBudgets);
   const categories = useStore((s) => s.categories);
   const transactions = useStore((s) => s.transactions);
   const { toUAH, formatUAH } = useCurrency();
   const { t, locale } = useT();
 
   const monthBudgets = budgets.filter((b) => b.month === month).slice(0, 5);
+  const expectedBudget = monthlyBudgets[month] ?? 0;
 
   const spentByCategory = new Map<string, number>();
   for (const tx of transactions) {
@@ -25,7 +27,6 @@ export function BudgetProgress({ month }: BudgetProgressProps) {
     const uah = toUAH(tx.amount, tx.currency);
     spentByCategory.set(tx.categoryId, (spentByCategory.get(tx.categoryId) ?? 0) + uah);
   }
-  const totalMonthExpenses = Array.from(spentByCategory.values()).reduce((s, v) => s + v, 0);
 
   return (
     <Card>
@@ -39,7 +40,7 @@ export function BudgetProgress({ month }: BudgetProgressProps) {
           {monthBudgets.map((b) => {
             const category = categories.find((c) => c.id === b.categoryId);
             const spent = spentByCategory.get(b.categoryId) ?? 0;
-            const limit = resolveBudgetLimit(b, totalMonthExpenses);
+            const limit = resolveBudgetLimit(b, expectedBudget);
             const percent = limit > 0 ? (spent / limit) * 100 : 0;
             const over = percent > 100;
             return (

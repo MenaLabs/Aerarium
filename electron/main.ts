@@ -71,6 +71,7 @@ function loadData(): AppData {
     if (!parsed.transfers) parsed.transfers = [];
     if (!parsed.recurringRules) parsed.recurringRules = [];
     if (!parsed.chartWidgets) parsed.chartWidgets = [];
+    if (!parsed.monthlyBudgets) parsed.monthlyBudgets = {};
     if (parsed.settings && parsed.settings.autoImportRates === undefined) {
       parsed.settings.autoImportRates = false;
     }

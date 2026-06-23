@@ -51,7 +51,7 @@ export interface Budget {
   month: string; // YYYY-MM
   categoryId: string;
   amountUAH?: number;
-  percent?: number; // % of total monthly expenses, alternative to amountUAH
+  percent?: number; // % of the expected monthly budget for that month, alternative to amountUAH
 }
 
 export interface Transfer {
@@ -134,6 +134,7 @@ export interface AppData {
   transactions: Transaction[];
   categories: Category[];
   budgets: Budget[];
+  monthlyBudgets?: Record<string, number>; // month "YYYY-MM" -> expected total spend (UAH)
   transfers: Transfer[];
   recurringRules: RecurringRule[];
   chartWidgets: ChartWidget[];

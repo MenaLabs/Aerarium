@@ -139,7 +139,10 @@ export const en = {
   accounts_transferDeletedToast: 'Transfer deleted',
   accounts_amountIn: 'Amount ({currency})',
 
-  budget_budgetSet: 'Budget set',
+  budget_monthlyBudget: 'Expected monthly budget',
+  budget_setMonthlyBudget: 'Set monthly budget',
+  budget_monthlyBudgetHint:
+    'Set the total you expect to spend this month — category percentages are calculated from it.',
   budget_spent: 'Spent',
   budget_remaining: 'Remaining',
   budget_plannedTx: 'Planned transactions',
@@ -157,8 +160,8 @@ export const en = {
   budget_budgetBtn: 'Budget',
   budget_setLimitTitle: 'Set limit',
   budget_amountUah: 'Amount ({currency})',
-  budget_percentOfExpenses: '% of expenses',
-  budget_percentInput: '% of total monthly expenses',
+  budget_percentOfExpenses: '% of budget',
+  budget_percentInput: '% of your expected monthly budget',
   budget_newRecurringTitle: 'New recurring transaction',
   budget_frequency: 'Frequency',
   budget_monthly: 'Monthly',
