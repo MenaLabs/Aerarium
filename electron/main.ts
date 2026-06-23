@@ -235,45 +235,84 @@ async function restoreData(): Promise<{ canceled: boolean; data?: AppData; error
   return { canceled: false, data };
 }
 
-const FRANKFURTER_URL = 'https://api.frankfurter.dev/v1/latest';
+// Frankfurter (ECB data) is deliberately not in this list: the ECB doesn't publish
+// UAH at all, so it can never serve as a source for our UAH-pivoted rate storage.
+const OPEN_ER_API_URL = 'https://open.er-api.com/v6/latest/USD';
+const EXCHANGERATE_API_URL = 'https://api.exchangerate-api.com/v4/latest/USD';
+const FAWAZ_CURRENCY_API_URL =
+  'https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json';
 const COINGECKO_URL = 'https://api.coingecko.com/api/v3/simple/price';
+
+async function fetchJson(url: string): Promise<unknown | null> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+let fawazUsdRatesCache: Record<string, number> | null | undefined;
+async function getFawazUsdRates(): Promise<Record<string, number> | null> {
+  if (fawazUsdRatesCache !== undefined) return fawazUsdRatesCache;
+  const json = (await fetchJson(FAWAZ_CURRENCY_API_URL)) as { usd?: Record<string, number> } | null;
+  fawazUsdRatesCache = json?.usd ?? null;
+  return fawazUsdRatesCache;
+}
+
+// Returns "units of CODE per 1 USD" (uppercase keys), guaranteed to include UAH
+// when non-null. Tries multiple independent providers so a single outage or
+// region block doesn't take down rate updates entirely.
+async function fetchUsdBasedFiatRates(): Promise<Record<string, number> | null> {
+  for (const url of [OPEN_ER_API_URL, EXCHANGERATE_API_URL]) {
+    const json = (await fetchJson(url)) as { rates?: Record<string, number> } | null;
+    if (json?.rates?.UAH) return json.rates;
+  }
+  const fawaz = await getFawazUsdRates();
+  if (fawaz?.uah) {
+    const upper: Record<string, number> = {};
+    for (const [k, v] of Object.entries(fawaz)) upper[k.toUpperCase()] = v;
+    return upper;
+  }
+  return null;
+}
 
 async function fetchRates(): Promise<
   { ok: true; rates: Record<string, number> } | { ok: false; error: string }
 > {
   const locale = loadData().settings.locale;
   try {
-    const rates: Record<string, number> = {};
-
-    const otherFiat = FIAT_CURRENCIES.filter((c) => c.code !== 'UAH' && c.code !== 'EUR');
-    const symbols = ['UAH', ...otherFiat.map((c) => c.code)].join(',');
-    const fxRes = await fetch(`${FRANKFURTER_URL}?base=EUR&symbols=${symbols}`);
-    if (!fxRes.ok) {
-      return { ok: false, error: tMain(locale, 'rates_errorStatus', { status: fxRes.status }) };
+    const usdRates = await fetchUsdBasedFiatRates();
+    if (!usdRates) {
+      return { ok: false, error: tMain(locale, 'rates_networkError') };
     }
-    const fx = (await fxRes.json()) as { rates: Record<string, number> };
-    const uahPerEur = fx.rates.UAH;
-    if (!uahPerEur) {
-      return { ok: false, error: tMain(locale, 'rates_notFound') };
-    }
-    rates.EUR = uahPerEur;
-    for (const c of otherFiat) {
-      const perEur = fx.rates[c.code];
-      if (perEur) rates[c.code] = uahPerEur / perEur;
+    const uahPerUsd = usdRates.UAH;
+    const rates: Record<string, number> = { USD: uahPerUsd };
+    for (const c of FIAT_CURRENCIES) {
+      if (c.code === 'UAH' || c.code === 'USD') continue;
+      const perUsd = usdRates[c.code];
+      if (perUsd) rates[c.code] = uahPerUsd / perUsd;
     }
 
-    try {
-      const ids = CRYPTO_CURRENCIES.map((c) => c.coingeckoId).join(',');
-      const cgRes = await fetch(`${COINGECKO_URL}?ids=${ids}&vs_currencies=uah`);
-      if (cgRes.ok) {
-        const cg = (await cgRes.json()) as Record<string, { uah: number }>;
-        for (const c of CRYPTO_CURRENCIES) {
-          const v = c.coingeckoId ? cg[c.coingeckoId]?.uah : undefined;
-          if (v) rates[c.code] = v;
+    const ids = CRYPTO_CURRENCIES.map((c) => c.coingeckoId).join(',');
+    const cg = (await fetchJson(`${COINGECKO_URL}?ids=${ids}&vs_currencies=uah`)) as Record<
+      string,
+      { uah: number }
+    > | null;
+    for (const c of CRYPTO_CURRENCIES) {
+      const v = c.coingeckoId ? cg?.[c.coingeckoId]?.uah : undefined;
+      if (v) rates[c.code] = v;
+    }
+    const missingCrypto = CRYPTO_CURRENCIES.filter((c) => !rates[c.code]);
+    if (missingCrypto.length > 0) {
+      const fawaz = await getFawazUsdRates();
+      if (fawaz) {
+        for (const c of missingCrypto) {
+          const perUsd = fawaz[c.code.toLowerCase()];
+          if (perUsd) rates[c.code] = uahPerUsd / perUsd;
         }
       }
-    } catch {
-      // non-fatal: crypto rates are best-effort
     }
 
     return { ok: true, rates };

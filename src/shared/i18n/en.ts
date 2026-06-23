@@ -63,8 +63,6 @@ export const en = {
   main_pdfExportTitle: 'Export to PDF',
   main_pdfGeneratedAt: 'Generated',
   csv_colPlanned: 'Planned',
-  rates_errorStatus: 'Rates server returned an error: {status}',
-  rates_notFound: 'Exchange rates not found in server response',
   error_unknown: 'Unknown error',
   rates_networkError: 'Could not reach the rates server. Check your internet connection.',
 

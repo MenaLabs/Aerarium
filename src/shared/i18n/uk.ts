@@ -65,8 +65,6 @@ export const uk: Record<keyof typeof en, string> = {
   main_pdfExportTitle: 'Експорт у PDF',
   main_pdfGeneratedAt: 'Згенеровано',
   csv_colPlanned: 'Заплановано',
-  rates_errorStatus: 'Сервер курсів повернув помилку: {status}',
-  rates_notFound: 'Не знайдено курси валют у відповіді сервера',
   error_unknown: 'Невідома помилка',
   rates_networkError: 'Не вдалося звʼязатися з сервером курсів. Перевірте підключення до інтернету.',
 
