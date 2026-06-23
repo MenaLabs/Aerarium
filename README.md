@@ -68,3 +68,6 @@ There is no telemetry, no account system, and no backend of any kind in this bui
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+<img width="3000" height="3000" alt="qr-code" src="https://github.com/user-attachments/assets/1a58281a-b658-44f6-ad84-bef4771df654" />
+(in case you would like to support the developer)/(у разі якщо ви захочете підтримати розробника)
