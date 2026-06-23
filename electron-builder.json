@@ -1,0 +1,29 @@
+{
+  "appId": "com.aerarium.app",
+  "productName": "Aerarium",
+  "directories": {
+    "output": "release"
+  },
+  "files": ["dist/**/*", "dist-electron/**/*.js", "build/icon.png", "package.json"],
+  "afterPack": "scripts/afterPack.js",
+  "win": {
+    "target": "nsis",
+    "icon": "build/icon.ico",
+    "signAndEditExecutable": false
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true,
+    "uninstallDisplayName": "${productName}"
+  },
+  "linux": {
+    "target": "AppImage",
+    "icon": "build/icon.png"
+  },
+  "mac": {
+    "target": "dmg",
+    "icon": "build/icon.icns"
+  }
+}

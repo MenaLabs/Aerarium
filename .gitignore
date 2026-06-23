@@ -1,0 +1,9 @@
+node_modules/
+dist/
+dist-electron/
+release/
+data/aerarium.json
+.DS_Store
+*.log
+.env
+.claude/
