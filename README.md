@@ -60,6 +60,10 @@ All data lives in a local JSON file (`data/aerarium.json` in dev, `%APPDATA%/Aer
 
 There is no telemetry, no account system, and no backend of any kind in this build.
 
+### Bug reports
+
+Found a bug or have a suggestion? Open an issue on GitHub: [github.com/MenaLabs/Aerarium/issues](https://github.com/MenaLabs/Aerarium/issues). (An email contact will be added later.)
+
 ### License
 
 MIT — see [LICENSE](LICENSE).
@@ -116,6 +120,10 @@ npm run build    # збирає інсталятор для Windows через e
 - опційних посилань на донати, що відкриваються у вашому браузері
 
 У цій збірці немає телеметрії, системи акаунтів чи будь-якого бекенду.
+
+### Повідомити про баг
+
+Знайшли помилку чи маєте пропозицію? Створіть issue на GitHub: [github.com/MenaLabs/Aerarium/issues](https://github.com/MenaLabs/Aerarium/issues). (Email для звернень додамо згодом.)
 
 ### Ліцензія
 
