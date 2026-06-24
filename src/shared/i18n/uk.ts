@@ -251,6 +251,7 @@ export const uk: Record<keyof typeof en, string> = {
   analytics_currentPeriod: 'Поточний період',
 
   settings_title: 'Налаштування',
+  settings_theme: 'Тема',
   settings_language: 'Мова',
   settings_languageLabel: 'Мова застосунку',
   settings_currencies: 'Валюти',

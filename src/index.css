@@ -2,20 +2,24 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Default theme tokens (Vault dark). The active theme is applied at runtime by
+   applyTheme() in shared/utils/themes — these are the pre-paint fallback. */
 :root {
-  --bg-base: #0d1117;
-  --bg-surface: #161b22;
-  --bg-card: #1c2128;
-  --bg-hover: #21262d;
-  --border: #30363d;
-  --text-1: #e6edf3;
-  --text-2: #8b949e;
-  --text-3: #484f58;
-  --blue: #388bfd;
-  --green: #3fb950;
-  --red: #f85149;
-  --amber: #d29922;
-  --purple: #a371f7;
+  --bg-base: #0c1118;
+  --bg-surface: #121a24;
+  --bg-card: #18222e;
+  --bg-hover: #202d3b;
+  --border: #2a3744;
+  --text-1: #e9eef5;
+  --text-2: #9fb1c4;
+  --text-3: #647689;
+  --blue: #4f8df7;
+  --green: #3fbd80;
+  --red: #f15a51;
+  --amber: #e2a23c;
+  --purple: #a97ef2;
+  --on-accent: #ffffff;
+  --accent-gradient: linear-gradient(135deg, #3f7de8, #6ba3ff);
 }
 
 html,

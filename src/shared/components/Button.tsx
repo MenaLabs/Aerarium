@@ -8,7 +8,8 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const VARIANT_CLASSES: Record<Variant, string> = {
-  primary: 'bg-[var(--blue)] hover:opacity-90 text-white',
+  primary:
+    'bg-[image:var(--accent-gradient)] hover:brightness-[1.08] text-[var(--on-accent)]',
   ghost:
     'bg-transparent hover:bg-[var(--bg-hover)] border border-[var(--border)] text-[var(--text-1)]',
   danger: 'bg-[var(--red)] hover:opacity-90 text-white',

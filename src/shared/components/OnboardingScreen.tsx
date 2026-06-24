@@ -5,6 +5,7 @@ import { useT } from '@/shared/i18n';
 import { Card } from './Card';
 import { Button } from './Button';
 import { CurrencyPicker } from './CurrencyPicker';
+import { THEMES } from '@/shared/utils/themes';
 import type { Locale } from '@/types';
 
 interface OnboardingScreenProps {
@@ -17,6 +18,8 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
   const locale = useStore((s) => s.settings.locale);
   const accounts = useStore((s) => s.accounts);
   const updateAccount = useStore((s) => s.updateAccount);
+  const themeId = useStore((s) => s.settings.themeId);
+  const setThemeId = useStore((s) => s.setThemeId);
   const { t } = useT();
   const [currency, setCurrency] = useState('USD');
 
@@ -72,6 +75,32 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
           <div className="flex flex-col gap-1.5">
             <span className="text-xs text-[var(--text-2)]">{t('onboarding_currency')}</span>
             <CurrencyPicker value={currency} onChange={setCurrency} />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <span className="text-xs text-[var(--text-2)]">{t('settings_theme')}</span>
+            <div className="grid grid-cols-4 gap-2">
+              {THEMES.map((theme) => {
+                const active = theme.id === themeId;
+                return (
+                  <button
+                    key={theme.id}
+                    type="button"
+                    onClick={() => setThemeId(theme.id)}
+                    title={theme.name}
+                    className={`h-9 rounded-lg border transition ${
+                      active ? 'border-[var(--blue)] ring-1 ring-[var(--blue)]' : 'border-[var(--border)]'
+                    }`}
+                    style={{ backgroundColor: theme.tokens['--bg-base'] }}
+                  >
+                    <span
+                      className="block mx-auto h-3 w-3/4 rounded"
+                      style={{ background: theme.tokens['--accent-gradient'] }}
+                    />
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           <Button onClick={handleContinue}>{t('onboarding_continue')}</Button>

@@ -96,7 +96,8 @@ export interface RecurringRule {
 export interface Settings {
   rates: Record<string, number>; // UAH per 1 unit of the currency (UAH itself omitted, implicitly 1)
   defaultCurrency: Currency;
-  theme: Theme;
+  theme: Theme; // legacy dark/light flag, superseded by themeId
+  themeId: string; // selected named theme (see shared/utils/themes)
   autoImportRates: boolean;
   locale: Locale;
   autoBackupEnabled?: boolean; // defaults to true when unset

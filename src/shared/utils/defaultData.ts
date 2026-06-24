@@ -59,6 +59,7 @@ export const DEFAULT_DATA: AppData = {
     rates: { USD: 41.5, EUR: 44.2 },
     defaultCurrency: 'UAH',
     theme: 'dark',
+    themeId: 'vault',
     autoImportRates: false,
     locale: 'en',
   },

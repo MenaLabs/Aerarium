@@ -66,6 +66,14 @@ const MIGRATIONS: Array<(data: AppData) => AppData> = [
     }
     return d as AppData;
   },
+  // v2 -> v3: introduce named themes; seed from the old dark/light flag.
+  (data) => {
+    const d = { ...data };
+    if (d.settings && !d.settings.themeId) {
+      d.settings = { ...d.settings, themeId: d.settings.theme === 'light' ? 'light' : 'vault' };
+    }
+    return d;
+  },
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;
@@ -85,6 +93,7 @@ function normalize(data: AppData): AppData {
   d.settings ??= { ...DEFAULT_DATA.settings };
   if (d.settings.autoImportRates === undefined) d.settings.autoImportRates = false;
   if (!d.settings.locale) d.settings.locale = 'uk';
+  if (!d.settings.themeId) d.settings.themeId = d.settings.theme === 'light' ? 'light' : 'vault';
   return migrateCategories(d);
 }
 

@@ -16,6 +16,7 @@ import { Dashboard } from '@/features/dashboard';
 import { Toast } from '@/shared/components/Toast';
 import { platform } from '@/shared/platform';
 import { OnboardingScreen } from '@/shared/components/OnboardingScreen';
+import { applyTheme } from '@/shared/utils/themes';
 
 const Transactions = lazy(() =>
   import('@/features/transactions').then((m) => ({ default: m.Transactions }))
@@ -54,8 +55,13 @@ export default function App() {
   const setPage = useStore((s) => s.setPage);
   const showOnboarding = useStore((s) => s.showOnboarding);
   const setShowOnboarding = useStore((s) => s.setShowOnboarding);
+  const themeId = useStore((s) => s.settings.themeId);
   const { t } = useT();
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem(COLLAPSE_KEY) === '1');
+
+  useEffect(() => {
+    applyTheme(themeId);
+  }, [themeId]);
 
   useEffect(() => {
     platform.loadData().then((data) => {
@@ -97,7 +103,11 @@ export default function App() {
         }`}
       >
         <div className="flex items-center justify-between px-4 py-4 border-b border-[var(--border)]">
-          {!collapsed && <span className="font-semibold text-sm">{t('appName')}</span>}
+          {!collapsed && (
+            <span className="font-semibold text-sm bg-[image:var(--accent-gradient)] bg-clip-text text-transparent">
+              {t('appName')}
+            </span>
+          )}
           <button
             onClick={() => setCollapsed((c) => !c)}
             className="text-[var(--text-2)] hover:text-[var(--text-1)]"
@@ -118,7 +128,7 @@ export default function App() {
                 title={collapsed ? label : undefined}
                 className={`flex items-center gap-3 w-full px-4 py-2.5 text-sm transition ${
                   active
-                    ? 'bg-[var(--bg-hover)] text-[var(--text-1)] border-r-2 border-[var(--blue)]'
+                    ? 'bg-[image:var(--accent-gradient)] text-[var(--on-accent)]'
                     : 'text-[var(--text-2)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-1)]'
                 }`}
               >
@@ -131,7 +141,9 @@ export default function App() {
       </aside>
 
       <header className="md:hidden flex items-center justify-between px-4 py-3 border-b border-[var(--border)] bg-[var(--bg-surface)] flex-shrink-0">
-        <span className="font-semibold text-sm">{t('appName')}</span>
+        <span className="font-semibold text-sm bg-[image:var(--accent-gradient)] bg-clip-text text-transparent">
+          {t('appName')}
+        </span>
         <span className="text-sm text-[var(--text-2)]">{currentLabel}</span>
       </header>
 

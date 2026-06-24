@@ -249,6 +249,7 @@ export const en = {
   analytics_currentPeriod: 'Current period',
 
   settings_title: 'Settings',
+  settings_theme: 'Theme',
   settings_language: 'Language',
   settings_languageLabel: 'App language',
   settings_currencies: 'Currencies',
