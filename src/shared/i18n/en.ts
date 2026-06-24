@@ -289,6 +289,10 @@ export const en = {
   donations_kofi: 'Donate via Ko-fi',
   donations_crypto: 'Donate crypto',
 
+  update_available: 'Update available',
+  update_title: 'Update available',
+  update_btn: 'Update',
+
   toast_undo: 'Undo',
 };
 

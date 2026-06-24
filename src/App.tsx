@@ -16,6 +16,7 @@ import { Dashboard } from '@/features/dashboard';
 import { Toast } from '@/shared/components/Toast';
 import { platform } from '@/shared/platform';
 import { OnboardingScreen } from '@/shared/components/OnboardingScreen';
+import { UpdateChecker } from '@/shared/components/UpdateChecker';
 import { applyTheme } from '@/shared/utils/themes';
 
 const Transactions = lazy(() =>
@@ -138,6 +139,8 @@ export default function App() {
             );
           })}
         </nav>
+
+        <UpdateChecker collapsed={collapsed} />
       </aside>
 
       <header className="md:hidden flex items-center justify-between px-4 py-3 border-b border-[var(--border)] bg-[var(--bg-surface)] flex-shrink-0">

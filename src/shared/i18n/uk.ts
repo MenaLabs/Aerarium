@@ -291,5 +291,9 @@ export const uk: Record<keyof typeof en, string> = {
   donations_kofi: 'Підтримати через Ko-fi',
   donations_crypto: 'Підтримати криптовалютою',
 
+  update_available: 'Доступне оновлення',
+  update_title: 'Доступне оновлення',
+  update_btn: 'Оновити',
+
   toast_undo: 'Повернути',
 };

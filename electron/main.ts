@@ -397,6 +397,58 @@ async function exportChartPNG(
   return { canceled: false, filePath: result.filePath };
 }
 
+const GITHUB_RELEASES_API = 'https://api.github.com/repos/MenaLabs/Aerarium/releases?per_page=10';
+
+type UpdateCheckResult =
+  | { update: false }
+  | { update: true; version: string; notes: string; url: string; htmlUrl: string };
+
+// Returns true if version a is strictly newer than b (dotted numeric compare).
+function isNewerVersion(a: string, b: string): boolean {
+  const pa = a.split('.').map((n) => parseInt(n, 10) || 0);
+  const pb = b.split('.').map((n) => parseInt(n, 10) || 0);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const x = pa[i] ?? 0;
+    const y = pb[i] ?? 0;
+    if (x !== y) return x > y;
+  }
+  return false;
+}
+
+interface GithubRelease {
+  tag_name: string;
+  body?: string;
+  draft?: boolean;
+  html_url: string;
+  assets?: Array<{ name: string; browser_download_url: string }>;
+}
+
+// Checks GitHub Releases for a newer version. Returns {update:false} on any
+// failure (offline, private repo, rate limit) so it never disrupts the app.
+async function checkForUpdate(currentVersion: string): Promise<UpdateCheckResult> {
+  try {
+    const res = await fetch(GITHUB_RELEASES_API, {
+      headers: { Accept: 'application/vnd.github+json' },
+    });
+    if (!res.ok) return { update: false };
+    const releases = (await res.json()) as GithubRelease[];
+    const latest = releases.find((r) => !r.draft);
+    if (!latest) return { update: false };
+    const version = latest.tag_name.replace(/^v/, '');
+    if (!isNewerVersion(version, currentVersion)) return { update: false };
+    const exe = (latest.assets ?? []).find((a) => a.name.toLowerCase().endsWith('.exe'));
+    return {
+      update: true,
+      version,
+      notes: latest.body ?? '',
+      url: exe ? exe.browser_download_url : latest.html_url,
+      htmlUrl: latest.html_url,
+    };
+  } catch {
+    return { update: false };
+  }
+}
+
 function createWindow(): void {
   const win = new BrowserWindow({
     width: 1280,
@@ -440,6 +492,7 @@ ipcMain.handle(
     exportChartPNG(rect, suggestedName)
 );
 ipcMain.handle('open-external', (_event, url: string) => shell.openExternal(url));
+ipcMain.handle('check-update', (_event, currentVersion: string) => checkForUpdate(currentVersion));
 
 app.whenReady().then(() => {
   createWindow();

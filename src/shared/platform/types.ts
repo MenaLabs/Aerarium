@@ -23,4 +23,10 @@ export interface PlatformAPI {
     suggestedName: string
   ) => Promise<{ canceled: boolean; filePath?: string }>;
   openExternal: (url: string) => Promise<void>;
+  checkForUpdate: (
+    currentVersion: string
+  ) => Promise<
+    | { update: false }
+    | { update: true; version: string; notes: string; url: string; htmlUrl: string }
+  >;
 }

@@ -21,4 +21,10 @@ contextBridge.exposeInMainWorld('api', {
   ): Promise<{ canceled: boolean; filePath?: string }> =>
     ipcRenderer.invoke('export-chart-png', rect, suggestedName),
   openExternal: (url: string): Promise<void> => ipcRenderer.invoke('open-external', url),
+  checkForUpdate: (
+    currentVersion: string
+  ): Promise<
+    | { update: false }
+    | { update: true; version: string; notes: string; url: string; htmlUrl: string }
+  > => ipcRenderer.invoke('check-update', currentVersion),
 });
