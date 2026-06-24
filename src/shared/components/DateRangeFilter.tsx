@@ -1,15 +1,25 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { DatePicker } from './DatePicker';
 import { MonthPicker } from './MonthPicker';
 import { useT } from '@/shared/i18n';
-import { addDays, currentYear, monthBounds, todayStr, yearBounds } from '@/shared/utils/dates';
+import {
+  addDays,
+  currentMonth,
+  currentYear,
+  monthBounds,
+  todayStr,
+  yearBounds,
+} from '@/shared/utils/dates';
 
 type Granularity = 'year' | 'month' | 'day';
 type Mode = 'point' | 'range';
 
 interface DateRangeFilterProps {
   onChange: (from: string, to: string) => void;
+  // 'past' = presets end today (history, e.g. transactions);
+  // 'future' = presets start today (planning, e.g. budget).
+  presetDirection?: 'past' | 'future';
 }
 
 function YearPicker({ value, onChange }: { value: number; onChange: (year: number) => void }) {
@@ -42,16 +52,24 @@ function pillClass(activePill: boolean): string {
   }`;
 }
 
-export function DateRangeFilter({ onChange }: DateRangeFilterProps) {
+export function DateRangeFilter({ onChange, presetDirection = 'past' }: DateRangeFilterProps) {
   const { t } = useT();
   const [mode, setMode] = useState<Mode>('point');
   const [granularity, setGranularity] = useState<Granularity>('month');
   const [year, setYear] = useState(currentYear());
-  const [month, setMonth] = useState('');
+  const [month, setMonth] = useState(currentMonth());
   const [day, setDay] = useState('');
   const [rangeFrom, setRangeFrom] = useState('');
   const [rangeTo, setRangeTo] = useState('');
   const [active, setActive] = useState(false);
+
+  // Default the view to the current month on mount (instead of "all months").
+  useEffect(() => {
+    const b = monthBounds(currentMonth());
+    setActive(true);
+    onChange(b.from, b.to);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function applyYear(y: number) {
     setYear(y);
@@ -91,8 +109,15 @@ export function DateRangeFilter({ onChange }: DateRangeFilterProps) {
   }
 
   function applyPresetDays(days: number) {
-    const to = todayStr();
-    const from = addDays(to, -(days - 1));
+    let from: string;
+    let to: string;
+    if (presetDirection === 'future') {
+      from = todayStr();
+      to = addDays(from, days - 1);
+    } else {
+      to = todayStr();
+      from = addDays(to, -(days - 1));
+    }
     setRangeFrom(from);
     setRangeTo(to);
     setActive(true);
@@ -113,11 +138,9 @@ export function DateRangeFilter({ onChange }: DateRangeFilterProps) {
     if (g === 'year') {
       applyYear(year);
     } else if (g === 'month') {
-      if (month) applyMonth(month);
-      else clearAll();
+      applyMonth(month || currentMonth());
     } else {
-      if (day) applyDay(day);
-      else clearAll();
+      applyDay(day || todayStr());
     }
   }
 

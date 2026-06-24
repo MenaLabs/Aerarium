@@ -599,7 +599,7 @@ export function Budget() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-        <DateRangeFilter onChange={handleRangeChange} />
+        <DateRangeFilter onChange={handleRangeChange} presetDirection="future" />
         <div className="flex items-center gap-2 flex-wrap">
           <Button variant="ghost" onClick={() => setFormOpen(true)}>
             <span className="flex items-center gap-1.5">
