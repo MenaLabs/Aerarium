@@ -3,7 +3,7 @@
 **📖 Available in two languages — [English](#english) · [Українська](#українська)**
 **📖 Доступно двома мовами — [English](#english) · [Українська](#українська)**
 
-A free, open-source desktop finance tracker. No ads, no required account, no server — your data stays on your machine.
+A free, open-source desktop finance tracker. No ads, no subscriptions, no required account, no server — your data stays on your machine.
 
 > ⚠️ Early pre-release (beta). It works and is usable, but expect rough edges and changes between versions. Saved data is migrated automatically as the app evolves.
 
@@ -11,7 +11,7 @@ A free, open-source desktop finance tracker. No ads, no required account, no ser
 
 ## English
 
-A free, open-source desktop finance tracker. No ads, no required account, no server — your data stays in a local file on your own machine. Built with Electron, React, TypeScript, Tailwind CSS, and Zustand.
+A free, open-source desktop finance tracker. No ads, no subscriptions, no required account, no server — your data stays in a local file on your own machine. Built with Electron, React, TypeScript, Tailwind CSS, and Zustand.
 
 ### Features
 
@@ -68,7 +68,7 @@ MIT — see [LICENSE](LICENSE).
 
 ## Українська
 
-Безкоштовний відкритий десктопний фінансовий трекер. Без реклами, без обов'язкового акаунту, без сервера — дані зберігаються локально у файлі на вашому комп'ютері. Зроблено на Electron, React, TypeScript, Tailwind CSS та Zustand.
+Безкоштовний відкритий десктопний фінансовий трекер. Без реклами, без підписок, без обов'язкового акаунту, без сервера — дані зберігаються локально у файлі на вашому комп'ютері. Зроблено на Electron, React, TypeScript, Tailwind CSS та Zustand.
 
 ### Можливості
 
