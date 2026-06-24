@@ -113,10 +113,10 @@ export function DateRangeFilter({ onChange, presetDirection = 'past' }: DateRang
     let to: string;
     if (presetDirection === 'future') {
       from = todayStr();
-      to = addDays(from, days - 1);
+      to = addDays(from, days);
     } else {
       to = todayStr();
-      from = addDays(to, -(days - 1));
+      from = addDays(to, -days);
     }
     setRangeFrom(from);
     setRangeTo(to);
