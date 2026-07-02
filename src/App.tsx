@@ -75,7 +75,7 @@ export default function App() {
         });
       }
     });
-  }, [hydrate]);
+  }, [hydrate, setShowOnboarding]);
 
   useEffect(() => {
     localStorage.setItem(COLLAPSE_KEY, collapsed ? '1' : '0');

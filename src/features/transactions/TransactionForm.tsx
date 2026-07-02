@@ -133,7 +133,7 @@ export function TransactionForm({
       setIsPlanned(defaultPlanned);
       setAccountId(accounts[0]?.id ?? '');
     }
-  }, [open, initialType, defaultPlanned, accounts, editTransaction]);
+  }, [open, initialType, defaultPlanned, accounts, editTransaction, defaultCurrency]);
 
   useEffect(() => {
     if (!filteredCategories.some((c) => c.id === categoryId)) {

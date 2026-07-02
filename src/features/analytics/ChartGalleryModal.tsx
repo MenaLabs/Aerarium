@@ -160,7 +160,7 @@ export function ChartGalleryModal({ open, onClose, editingWidget }: ChartGallery
       setAccountId('');
       setCurrency('');
     }
-  }, [open, editingWidget]);
+  }, [open, editingWidget, categories]);
 
   function handleClose() {
     onClose();

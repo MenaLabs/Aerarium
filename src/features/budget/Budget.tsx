@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { format, parseISO } from 'date-fns';
 import { Plus, Check, Trash2, Pencil, Pause, Play } from 'lucide-react';
 import { Card } from '@/shared/components/Card';
@@ -98,7 +98,10 @@ function BudgetLimitModal({ open, onClose }: BudgetLimitModalProps) {
   const categories = useStore((s) => s.categories);
   const setBudget = useStore((s) => s.setBudget);
   const setBudgetPercent = useStore((s) => s.setBudgetPercent);
-  const expenseCategories = categories.filter((c) => c.type === 'expense');
+  const expenseCategories = useMemo(
+    () => categories.filter((c) => c.type === 'expense'),
+    [categories]
+  );
   const { t, locale } = useT();
   const { defaultCurrency } = useCurrency();
 
@@ -115,7 +118,7 @@ function BudgetLimitModal({ open, onClose }: BudgetLimitModalProps) {
     setAmount('');
     setPercent('');
     setCategoryId(expenseCategories[0]?.id ?? '');
-  }, [open]);
+  }, [open, expenseCategories]);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -239,7 +242,7 @@ function ExpectedBudgetModal({ open, onClose, overrideMonth }: ExpectedBudgetMod
     setSync(true);
     const ov = overrideMonth ? monthlyBudgets[overrideMonth] : undefined;
     setOverride(ov != null ? String(Number(fromUAH(ov).toFixed(2))) : '');
-  }, [open, overrideMonth]);
+  }, [open, overrideMonth, expectedBudget, monthlyBudgets, fromUAH]);
 
   const parsedAmount = parseFloat(amount.replace(',', '.'));
   const parsedDays = parseInt(days, 10);
