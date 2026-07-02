@@ -8,6 +8,7 @@ import { uk } from '../src/shared/i18n/uk';
 import { FIAT_CURRENCIES, CRYPTO_CURRENCIES } from '../src/shared/utils/currencies';
 import { categoryDisplayName } from '../src/shared/utils/categoryName';
 import { migrateAppData } from '../src/shared/utils/migrate';
+import { buildCsv } from '../src/shared/utils/csv';
 
 const DICTS = { en, uk };
 
@@ -108,13 +109,6 @@ function maybeAutoBackup(data: AppData): void {
   }
 }
 
-function csvEscape(value: string): string {
-  if (/[",\n]/.test(value)) {
-    return `"${value.replace(/"/g, '""')}"`;
-  }
-  return value;
-}
-
 function buildTransactionRows(data: AppData, locale: Locale): { header: string[]; rows: string[][] } {
   const header = [
     tMain(locale, 'common_date'),
@@ -159,7 +153,7 @@ async function exportCSV(): Promise<{ canceled: boolean; filePath?: string }> {
     return { canceled: true };
   }
   const { header, rows } = buildTransactionRows(data, locale);
-  const csv = [header, ...rows].map((row) => row.map(csvEscape).join(',')).join('\n');
+  const csv = buildCsv([header, ...rows]);
   fs.writeFileSync(result.filePath, '﻿' + csv, 'utf-8');
   return { canceled: false, filePath: result.filePath };
 }
