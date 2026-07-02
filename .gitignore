@@ -6,4 +6,5 @@ data/aerarium.json
 .DS_Store
 *.log
 .env
+git-api.txt
 .claude/
